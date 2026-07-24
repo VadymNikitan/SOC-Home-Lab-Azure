@@ -1,0 +1,27 @@
+№	Кейс	MITRE ATT&CK	Нужен AD
+1	Encoded PowerShell	T1059.001	❌
+2	PowerShell Download Cradle	T1105	❌
+3	Certutil Download	T1105	❌
+4	BITSAdmin Download	T1197	❌
+5	Suspicious Rundll32 Execution	T1218.011	❌
+6	Scheduled Task Persistence	T1053.005	❌
+7	Local Administrator Account Created	T1136.001	❌
+8	RDP Brute Force	T1110	❌
+9	Suspicious PowerShell Network Connection	T1059 + T1105	❌
+10	Office → PowerShell Process Chain	T1204	❌
+11	PsExec Lateral Movement	T1021.002	✅
+12	Kerberoasting	T1558.003	✅
+13	Password Spraying	T1110.003	✅
+14	BloodHound Enumeration	T1087 / T1069	✅
+15	Pass-the-Hash	T1550.002	✅
+Почему именно эти кейсы?
+
+Они закрывают практически все ключевые этапы атаки:
+
+Execution — PowerShell, Rundll32.
+Persistence — Scheduled Tasks.
+Credential Access — Kerberoasting, Pass-the-Hash.
+Discovery — BloodHound.
+Lateral Movement — PsExec.
+Initial Access — Brute Force.
+Command & Control / Ingress Tool Transfer — Download Cradle, Certutil, BITSAdmin.
