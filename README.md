@@ -35,7 +35,7 @@ Lessons Learned
 - Log Analytics Workspace
 - Azure Monitor Agent (AMA)
 - Sysmon
-- Windows 11 Honeypot
+- Windows 11 
 - Atomic Red Team
 - Kusto Query Language (KQL)
 
@@ -60,7 +60,7 @@ Lessons Learned
 |----|------|--------|--------|
 |001|PowerShell Encoded Command|T1059.001|✅|
 |002|Coming Soon||🚧|
-|003|Coming Soon||🚧|
+
 
 ---
 
