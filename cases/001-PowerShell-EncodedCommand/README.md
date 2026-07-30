@@ -18,18 +18,6 @@ The incident was classified as a Benign True Positive.
 |---|---|
 | Execution | T1059.001 — PowerShell |
 
-## Timeline
-
-## Timeline
-
-| Time (UTC) | Event | Source |
-|------------|-------|--------|
-| Jul 30, 2026 13:09:18 | Encoded PowerShell execution detected | Sysmon Event ID 1 |
-| Jul 30, 2026 13:16:44 | Alert generated | Microsoft Sentinel |
-| Jul 30, 2026 13:16:44 | Incident created | Microsoft Sentinel |
-
----
-
 ## Lab Environment
 
 | Component | Value |
@@ -42,6 +30,18 @@ The incident was classified as a Benign True Positive.
 | Detection | Scheduled Analytics Rule |
 
 ---
+
+
+## Timeline
+
+| Time (UTC) | Event | Source |
+|------------|-------|--------|
+| Jul 30, 2026 13:09:18 | Encoded PowerShell execution detected | Sysmon Event ID 1 |
+| Jul 30, 2026 13:16:44 | Alert generated | Microsoft Sentinel |
+| Jul 30, 2026 13:16:44 | Incident created | Microsoft Sentinel |
+
+---
+
 
 ## Objectives
 
