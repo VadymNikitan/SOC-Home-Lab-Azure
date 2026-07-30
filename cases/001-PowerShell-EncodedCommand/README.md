@@ -56,13 +56,11 @@ Detected parameters:
 -enc
 -EncodedCommand
 
-Screenshot:
 
 ![03-analytics-rule.png](./screenshots/03-analytics-rule.png)
 
 ## KQL Query
 
-File:
 
 [01-Detection-Rule.kql](./queries/01-Detection-Rule.kql)
 
@@ -100,7 +98,6 @@ File:
 
 Microsoft Sentinel generated an alert after execution of an encoded PowerShell command.
 
-Evidence:
 
 ![Incident Alert](./screenshots/01-incident-alert.png)
 
@@ -128,8 +125,6 @@ Findings:
 ✅ Elevated execution confirmed  
 
 
-Screenshot:
-
 
 ![Process Creation](./screenshots/05-process-creation-event-id-1.png)
 
@@ -140,11 +135,7 @@ Screenshot:
 
 The Base64 encoded command was decoded.
 
-Decoded output:
-
-File:
-
-[decoded-command.txt](./artifacts/decoded-command.txt)
+Write-Host "Hello, from PowerShell!"
 
 
 Result:
@@ -152,12 +143,6 @@ Result:
 The command executed a simple `Write-Host` statement.
 
 No malicious functionality was identified.
-
-
-Screenshot:
-
-![Decoded Command](./screenshots/04-decoded-command.png)
-
 
 ---
 
@@ -175,7 +160,6 @@ Result:
 No outbound network connections related to the PowerShell process were identified.
 
 
-Screenshot:
 
 ![Network Analysis](./screenshots/06-network-analysis-event-id-3.png)
 
@@ -198,9 +182,6 @@ Analysis:
 Temporary PowerShell execution policy test file.
 
 No suspicious payloads created.
-
-
-Screenshot:
 
 
 ![File Creation](./screenshots/07-file-analysis-event-id-11.png)
