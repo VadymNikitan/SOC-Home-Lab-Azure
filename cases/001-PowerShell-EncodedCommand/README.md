@@ -88,10 +88,7 @@ File:
 | Source | Microsoft Sentinel |
 | Host | CORP-WS-001 |
 
-![Incident Alert](./screenshots/01-incident-alert.png)
 
-
-![Incident Details](./screenshots/02-incident-details.png)
 
 ---
 
@@ -103,7 +100,10 @@ Microsoft Sentinel generated an alert after execution of an encoded PowerShell c
 
 Evidence:
 
-![Alert](./screenshots/01-sentinel-alert.png)
+![Incident Alert](./screenshots/01-incident-alert.png)
+
+
+![Incident Details](./screenshots/02-incident-details.png)
 
 
 ---
@@ -128,7 +128,8 @@ Findings:
 
 Screenshot:
 
-![Process Creation](./screenshots/03-sysmon-event-id-1.png)
+
+![Process Creation](./screenshots/05-process-creation-event-id-1.png)
 
 
 ---
@@ -174,7 +175,7 @@ No outbound network connections related to the PowerShell process were identifie
 
 Screenshot:
 
-![Network Analysis](./screenshots/05-sysmon-event-id-3.png)
+![Network Analysis](./screenshots/06-network-analysis-event-id-3.png)
 
 
 ---
@@ -199,7 +200,9 @@ No suspicious payloads created.
 
 Screenshot:
 
-![File Creation](./screenshots/06-sysmon-event-id-11.png)
+
+![File Creation](./screenshots/07-file-analysis-event-id-11.png)
+
 
 
 ---
