@@ -182,68 +182,56 @@ Query:
 [04-File-Analysis.kql](./queries/04-File-Analysis.kql)
 
 
-Observed file:
 
- 
-### Objectives
-Trigger a Microsoft Sentinel analytics rule
-Investigate Sysmon Event ID 1
-Decode the PowerShell command
-Validate network activity (Sysmon Event ID 3)
-Validate file creation (Sysmon Event ID 11)
-Document the investigation and incident closure
 
-### Lab Environment
-Component	Value
-SIEM	Microsoft Sentinel
-Log Source	Sysmon
-Agent	Azure Monitor Agent
-Detection	Scheduled Analytics Rule
-Host	CORP-WS-001
-Attack Simulation	Atomic Red Team
+Analysis:
 
-### Attack Simulation
-Technique
-MITRE ATT&CK
-T1059.001 - PowerShell
-Atomic Test
-Atomic Test #17
-PowerShell Command Execution
+Temporary PowerShell execution policy test file.
 
-### Alert Triggered
+No suspicious payloads created.
 
-Several minutes after executing the Atomic Test, Microsoft Sentinel generated an alert.
 
-Alert Details
-Field	Value
-Alert	PowerShell Encoded Command Execution
-Severity	Medium
-Source	Microsoft Sentinel
-MITRE	T1059.001
+Screenshot:
 
-### Investigation
-Step 1 — Review Alert Evidence
+![File Creation](./screenshots/06-sysmon-event-id-11.png)
 
-The incident contained a Sysmon Process Creation event.
 
-Findings
-Field	Value
-Image	powershell.exe
-Parent Image	cmd.exe
-User	CORP-WS-001\azureuser
-Integrity Level	High
+---
 
-### Step 2 — Analyze Command Line
+# Evidence Summary
 
-The PowerShell process used the following parameter:
+| Evidence | Result |
+|-|-|
+| PowerShell execution | ✅ |
+| Encoded command | ✅ |
+| Base64 decoded | ✅ |
+| Parent process identified | ✅ |
+| User identified | ✅ |
+| Elevated privileges | ✅ |
+| Network communication | ❌ None |
+| Malicious file creation | ❌ None |
 
-powershell.exe -e
+---
 
-The Base64 string was decoded.
+# Incident Classification
 
-Decoded command:
+| Field | Result |
+|-|-|
+| Severity | Low |
+| Confidence | High |
+| Classification | Benign True Positive |
+| Root Cause | Authorized Atomic Red Team Testing |
 
-Write-Host "Hello, from PowerShell!"
-Analyst Notes
+---
+
+# Lessons Learned
+
+- Sysmon Event ID 1 provides process execution visibility.
+- Encoded PowerShell commands must always be decoded before classification.
+- Sysmon Event ID 3 helps identify possible external communication.
+- Sysmon Event ID 11 helps identify dropped files or payloads.
+- Microsoft Sentinel successfully detected the simulated behavior.
+
+
 
 The decoded payload performed no malicious activity.
