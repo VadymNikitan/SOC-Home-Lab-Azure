@@ -1,15 +1,32 @@
-# Case 001: PowerShell Encoded Command Execution (MITRE ATT&CK T1059.001)
+# Incident 001: PowerShell Encoded Command Execution (MITRE ATT&CK T1059.001)
 ---
 
 ## Scenario
 This case demonstrates the investigation of a Microsoft Sentinel alert triggered by an encoded PowerShell command executed during an authorized Atomic Red Team simulation.
 The objective was to validate the detection, analyze Sysmon telemetry, and determine whether the activity represented malicious behavior or legitimate security testing.
 
+## Executive Summary
+
+Microsoft Sentinel generated an alert after detecting an encoded PowerShell command.
+The investigation confirmed that the activity originated from an authorized Atomic Red Team simulation.
+No malicious execution, persistence, or outbound network communication was observed.
+The incident was classified as a Benign True Positive.
+
 ## MITRE ATT&CK Mapping
 
 | Tactic | Technique |
 |---|---|
 | Execution | T1059.001 — PowerShell |
+
+## Timeline
+
+## Timeline
+
+| Time (UTC) | Event | Source |
+|------------|-------|--------|
+| Jul 30, 2026 13:09:18 | Encoded PowerShell execution detected | Sysmon Event ID 1 |
+| Jul 30, 2026 13:16:44 | Alert generated | Microsoft Sentinel |
+| Jul 30, 2026 13:16:44 | Incident created | Microsoft Sentinel |
 
 ---
 
@@ -39,11 +56,11 @@ The objective was to validate the detection, analyze Sysmon telemetry, and deter
 
 ## Detection Rule
 
-## Objective
+### Objective
 
 Detect encoded PowerShell execution.
 
-## Detection Logic
+### Detection Logic
 
 The rule monitors:
 
@@ -51,15 +68,16 @@ The rule monitors:
 - PowerShell execution
 - Encoded command parameters
 
-Detected parameters:
--e
--enc
--EncodedCommand
+Detected command-line parameters:
+
+- `-e`
+- `-enc`
+- `-EncodedCommand`
 
 
 ![03-analytics-rule.png](./screenshots/03-analytics-rule.png)
 
-## KQL Query
+### KQL Query
 
 
 [01-Detection-Rule.kql](./queries/01-Detection-Rule.kql)
@@ -94,7 +112,7 @@ Detected parameters:
 
 ## Investigation
 
-## Step 1 — Alert Validation
+### Step 1 — Alert Validation
 
 Microsoft Sentinel generated an alert after execution of an encoded PowerShell command.
 
@@ -107,7 +125,7 @@ Microsoft Sentinel generated an alert after execution of an encoded PowerShell c
 
 ---
 
-## Step 2 — Process Analysis
+### Step 2 — Process Analysis
 
 Reviewed Sysmon Event ID 1.
 
@@ -116,13 +134,12 @@ Query:
 [02-Process-Creation.kql](./queries/02-Process-Creation.kql)
 
 
-Findings:
+### Findings
 
-✅ PowerShell executed  
-✅ Encoded command identified  
-✅ Parent process identified  
-✅ User identified  
-✅ Elevated execution confirmed  
+- Encoded PowerShell execution confirmed.
+- Parent process identified (`cmd.exe`).
+- User successfully identified.
+- Process executed with High Integrity.
 
 
 
@@ -131,11 +148,13 @@ Findings:
 
 ---
 
-## Step 3 — PowerShell Decoding
+### Step 3 — PowerShell Decoding
 
-The Base64 encoded command was decoded.
+Decoded command:
 
+```powershell
 Write-Host "Hello, from PowerShell!"
+```
 
 
 Result:
@@ -146,7 +165,7 @@ No malicious functionality was identified.
 
 ---
 
-## Step 4 — Network Analysis
+### Step 4 — Network Analysis
 
 Reviewed Sysmon Event ID 3.
 
@@ -166,7 +185,7 @@ No outbound network connections related to the PowerShell process were identifie
 
 ---
 
-## Step 5 — File Analysis
+### Step 5 — File Analysis
 
 Reviewed Sysmon Event ID 11.
 
@@ -192,16 +211,46 @@ No suspicious payloads created.
 
 ## Evidence Summary
 
-| Evidence | Result |
-|-|-|
-| PowerShell execution | ✅ |
-| Encoded command | ✅ |
-| Base64 decoded | ✅ |
-| Parent process identified | ✅ |
-| User identified | ✅ |
-| Elevated privileges | ✅ |
-| Network communication | ❌ None |
-| Malicious file creation | ❌ None |
+| Evidence | Status |
+|----------|--------|
+| PowerShell execution | Confirmed |
+| Encoded command | Confirmed |
+| Base64 command decoded | Completed |
+| Parent process identified | Confirmed |
+| User identified | Confirmed |
+| Elevated execution | Confirmed |
+| Outbound network activity | Not Observed |
+| Malicious file creation | Not Observed |
+
+## Attack Flow
+
+```text
+Atomic Red Team
+        │
+        ▼
+PowerShell (EncodedCommand)
+        │
+        ▼
+Sysmon Event ID 1
+        │
+        ▼
+Azure Monitor Agent
+        │
+        ▼
+Log Analytics Workspace
+        │
+        ▼
+Microsoft Sentinel
+        │
+        ▼
+Analytics Rule
+        │
+        ▼
+Alert
+        │
+        ▼
+Incident
+```
 
 ---
 
@@ -212,18 +261,25 @@ No suspicious payloads created.
 | Severity | Low |
 | Confidence | High |
 | Classification | Benign True Positive |
-| Root Cause | Authorized Atomic Red Team Testing |
+| Root Cause | Authorized Atomic Red Team Simulation |
+
+## Conclusion
+
+The investigation confirmed that an encoded PowerShell command was successfully executed.
+Although the activity matched the detection logic for MITRE ATT&CK technique T1059.001 (PowerShell), further analysis determined that it originated from an authorized Atomic Red Team simulation.
+Review of Sysmon telemetry found no evidence of malicious payload execution, persistence, credential access, lateral movement, or outbound network communication.
+Based on the collected evidence, the incident was classified as a **Benign True Positive** and no additional response actions were required.
 
 ---
 
 ## Lessons Learned
 
 - Sysmon Event ID 1 provides process execution visibility.
-- Encoded PowerShell commands must always be decoded before classification.
-- Sysmon Event ID 3 helps identify possible external communication.
-- Sysmon Event ID 11 helps identify dropped files or payloads.
-- Microsoft Sentinel successfully detected the simulated behavior.
+- Encoded PowerShell commands should always be decoded before classification.
+- Sysmon Event ID 3 helps identify outbound network communication.
+- Sysmon Event ID 11 helps identify dropped files and payloads.
+- Microsoft Sentinel successfully detected the simulated activity.
 
 
 
-The decoded payload performed no malicious activity.
+
