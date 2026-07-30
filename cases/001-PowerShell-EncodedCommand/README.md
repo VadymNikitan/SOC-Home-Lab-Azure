@@ -88,9 +88,9 @@ File:
 | Source | Microsoft Sentinel |
 | Host | CORP-WS-001 |
 
-Screenshot:
+![Incident Alert](./screenshots/01-incident-alert.png)
 
-![Alert](./screenshots/01-sentinel-alert.png)
+![Incident Details](./screenshots/02-incident-details.png)
 
 ---
 
