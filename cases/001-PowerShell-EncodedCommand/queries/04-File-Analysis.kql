@@ -1,0 +1,9 @@
+04-File-Analysis.kql
+SecurityEvent
+| where EventSourceName == "Microsoft-Windows-Sysmon"
+| where EventID == 11
+| where EventData contains "ff02a448-22ce-6a6b-fb00-000000001400"
+| project
+    TimeGenerated,
+    Computer,
+    EventData
