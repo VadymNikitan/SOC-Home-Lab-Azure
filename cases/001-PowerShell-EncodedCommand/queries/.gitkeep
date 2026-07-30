@@ -3,31 +3,21 @@ SecurityEvent
 | where EventID == 1
 | where CommandLine contains "powershell.exe"
 | where CommandLine contains "-e"
-| project TimeGenerated, Computer, CommandLine
+| project TimeGenerated, Computer, Account, CommandLine, ParentProcessName, EventData
+| order by TimeGenerated desc
 
 SecurityEvent
-| where EventSourceName == "Microsoft-Windows-Sysmon"
 | where EventID == 3
-| where Computer == "Honeypot"
-| where TimeGenerated > ago(1h)
+| where EventData contains "{ff02a448-22ce-6a6b-fb00-000000001400}"
 
 SecurityEvent
-| where EventSourceName == "Microsoft-Windows-Sysmon"
-| where EventID == 3
-| where Computer == "Honeypot"
-| where TimeGenerated between(datetime(2026-07-25 10:55:00) .. datetime(2026-07-25 11:05:00))
-
-
-SecurityEvent
-| where EventSourceName == "Microsoft-Windows-Sysmon"
-| where EventID == 3
-| where Computer == "Honeypot"
-| where EventData contains "powershell"
-| where TimeGenerated between(datetime(2026-07-25 10:55:00) .. datetime(2026-07-25 11:05:00))
-
-
-SecurityEvent
-| where EventSourceName == "Microsoft-Windows-Sysmon"
 | where EventID == 11
-| where Computer == "Honeypot"
-| where TimeGenerated between(datetime(2026-07-25 10:55:00) .. datetime(2026-07-25 11:05:00))
+| where EventData contains "{ff02a448-22ce-6a6b-fb00-000000001400}"
+
+
+
+SecurityEvent
+| where EventSourceName == "Microsoft-Windows-Sysmon"
+| where EventID == 1
+| where CommandLine has_any ("-enc", "-EncodedCommand", " -e ")
+| project TimeGenerated, Computer, Account, CommandLine, EventData
