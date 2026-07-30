@@ -55,6 +55,11 @@ Detected parameters:
 -e
 -enc
 -EncodedCommand
+
+Screenshot:
+
+![analytics-rule.png](./screenshots/analytics-rule.pngpng)
+
 ## KQL Query
 
 File:
