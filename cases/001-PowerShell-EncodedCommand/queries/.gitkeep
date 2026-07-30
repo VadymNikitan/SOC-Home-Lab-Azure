@@ -37,7 +37,7 @@ SecurityEvent
     EventData
 
 
- 05-Timeline-Correlation.kql
+05-Timeline-Correlation.kql
 let ProcessGuid = "{ff02a448-22ce-6a6b-fb00-000000001400}";
 SecurityEvent
 | where EventSourceName == "Microsoft-Windows-Sysmon"
