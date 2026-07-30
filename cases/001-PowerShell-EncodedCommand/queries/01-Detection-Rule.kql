@@ -1,0 +1,6 @@
+01-Detection-Rule.kql
+SecurityEvent
+| where EventSourceName == "Microsoft-Windows-Sysmon"
+| where EventID == 1
+| where CommandLine has_any ("-enc", "-EncodedCommand", " -e ")
+| project TimeGenerated, Computer, Account, CommandLine, EventData
