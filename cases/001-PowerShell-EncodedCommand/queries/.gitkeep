@@ -1,23 +1,53 @@
-SecurityEvent
-| where TimeGenerated > ago(4h)
-| where EventID == 1
-| where CommandLine contains "powershell.exe"
-| where CommandLine contains "-e"
-| project TimeGenerated, Computer, Account, CommandLine, ParentProcessName, EventData
-| order by TimeGenerated desc
-
-SecurityEvent
-| where EventID == 3
-| where EventData contains "{ff02a448-22ce-6a6b-fb00-000000001400}"
-
-SecurityEvent
-| where EventID == 11
-| where EventData contains "{ff02a448-22ce-6a6b-fb00-000000001400}"
-
-
-
+01-Detection-Rule.kql
 SecurityEvent
 | where EventSourceName == "Microsoft-Windows-Sysmon"
 | where EventID == 1
 | where CommandLine has_any ("-enc", "-EncodedCommand", " -e ")
 | project TimeGenerated, Computer, Account, CommandLine, EventData
+
+
+02-Process-Creation.kql
+SecurityEvent
+| where TimeGenerated > ago(1h)
+| where EventSourceName == "Microsoft-Windows-Sysmon"
+| where EventID == 1
+| where CommandLine has_any ("-enc", "-EncodedCommand", " -e ")
+| project TimeGenerated, Computer, CommandLine
+
+
+03-Network-Analysis.kql
+SecurityEvent
+| where EventSourceName == "Microsoft-Windows-Sysmon"
+| where EventID == 3
+| where EventData contains "ff02a448-22ce-6a6b-fb00-000000001400"
+| project
+    TimeGenerated,
+    Computer,
+    EventData
+
+
+04-File-Analysis.kql
+SecurityEvent
+| where EventSourceName == "Microsoft-Windows-Sysmon"
+| where EventID == 11
+| where EventData contains "ff02a448-22ce-6a6b-fb00-000000001400"
+| project
+    TimeGenerated,
+    Computer,
+    EventData
+
+
+ 05-Timeline-Correlation.kql
+let ProcessGuid = "{ff02a448-22ce-6a6b-fb00-000000001400}";
+SecurityEvent
+| where EventSourceName == "Microsoft-Windows-Sysmon"
+| where EventData contains ProcessGuid
+| project
+    TimeGenerated,
+    EventID,
+    Computer,
+    EventData
+| order by TimeGenerated asc
+
+
+
