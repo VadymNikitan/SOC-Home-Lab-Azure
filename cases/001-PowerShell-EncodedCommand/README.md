@@ -1,4 +1,4 @@
-# Case 001: PowerShell Encoded Command Execution 
+# Case 001: Suspicious PowerShell Execution Investigation
 ---
 
 ## Scenario
