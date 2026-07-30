@@ -58,7 +58,7 @@ Detected parameters:
 
 Screenshot:
 
-![analytics-rule.png](./screenshots/analytics-rule.pngpng)
+![03-analytics-rule.png](./screenshots/03-analytics-rule.png)
 
 ## KQL Query
 
