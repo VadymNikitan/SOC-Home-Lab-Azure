@@ -77,6 +77,8 @@ File:
 | Test | Atomic Test #17 |
 | Description | PowerShell Command Execution |
 
+![Atomic test](./screenshots/04-atomic-test-17.png)
+
 ---
 
 # Alert Details
