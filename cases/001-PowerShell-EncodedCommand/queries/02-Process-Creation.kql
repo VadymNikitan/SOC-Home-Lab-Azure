@@ -1,0 +1,7 @@
+02-Process-Creation.kql
+SecurityEvent
+| where TimeGenerated > ago(1h)
+| where EventSourceName == "Microsoft-Windows-Sysmon"
+| where EventID == 1
+| where CommandLine has_any ("-enc", "-EncodedCommand", " -e ")
+| project TimeGenerated, Computer, CommandLine
