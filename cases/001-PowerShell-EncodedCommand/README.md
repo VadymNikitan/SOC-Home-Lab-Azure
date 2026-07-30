@@ -1,4 +1,4 @@
-# Incident 001: PowerShell Encoded Command Execution (MITRE ATT&CK T1059.001)
+# Case 001: PowerShell Encoded Command Execution 
 ---
 
 ## Scenario
