@@ -1,11 +1,11 @@
 # Case 001: PowerShell Encoded Command Execution (MITRE ATT&CK T1059.001)
 ---
 
-# Scenario
+## Scenario
 This case demonstrates the investigation of a Microsoft Sentinel alert triggered by an encoded PowerShell command executed during an authorized Atomic Red Team simulation.
 The objective was to validate the detection, analyze Sysmon telemetry, and determine whether the activity represented malicious behavior or legitimate security testing.
 
-# MITRE ATT&CK Mapping
+## MITRE ATT&CK Mapping
 
 | Tactic | Technique |
 |---|---|
@@ -13,7 +13,7 @@ The objective was to validate the detection, analyze Sysmon telemetry, and deter
 
 ---
 
-# Lab Environment
+## Lab Environment
 
 | Component | Value |
 |---|---|
@@ -26,7 +26,7 @@ The objective was to validate the detection, analyze Sysmon telemetry, and deter
 
 ---
 
-# Objectives
+## Objectives
 
 - Trigger Sentinel Analytics Rule
 - Analyze Sysmon Event ID 1
@@ -37,7 +37,7 @@ The objective was to validate the detection, analyze Sysmon telemetry, and deter
 
 ---
 
-# Detection Rule
+## Detection Rule
 
 ## Objective
 
@@ -66,7 +66,7 @@ Detected parameters:
 
 ---
 
-# Attack Simulation
+## Attack Simulation
 
 | Item | Value |
 |-|-|
@@ -79,7 +79,7 @@ Detected parameters:
 
 ---
 
-# Alert Details
+## Alert Details
 
 | Field | Value |
 |-|-|
@@ -92,7 +92,7 @@ Detected parameters:
 
 ---
 
-# Investigation
+## Investigation
 
 ## Step 1 — Alert Validation
 
@@ -190,7 +190,7 @@ No suspicious payloads created.
 
 ---
 
-# Evidence Summary
+## Evidence Summary
 
 | Evidence | Result |
 |-|-|
@@ -205,7 +205,7 @@ No suspicious payloads created.
 
 ---
 
-# Incident Classification
+## Incident Classification
 
 | Field | Result |
 |-|-|
@@ -216,7 +216,7 @@ No suspicious payloads created.
 
 ---
 
-# Lessons Learned
+## Lessons Learned
 
 - Sysmon Event ID 1 provides process execution visibility.
 - Encoded PowerShell commands must always be decoded before classification.
