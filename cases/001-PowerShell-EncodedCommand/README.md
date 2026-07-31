@@ -7,10 +7,7 @@ The objective was to validate the detection, analyze Sysmon telemetry, and deter
 
 ## Executive Summary
 
-Microsoft Sentinel generated an alert after detecting an encoded PowerShell command.
-The investigation confirmed that the activity originated from an authorized Atomic Red Team simulation.
-No malicious execution, persistence, or outbound network communication was observed.
-The incident was classified as a Benign True Positive.
+Microsoft Sentinel generated an alert after detecting an encoded PowerShell command executed on a Windows endpoint. The investigation reconstructed the execution chain using Sysmon telemetry and confirmed that the activity originated from an authorized Atomic Red Team simulation. No evidence of persistence, credential access, lateral movement, or malicious network communication was identified.
 
 ## MITRE ATT&CK Mapping
 
