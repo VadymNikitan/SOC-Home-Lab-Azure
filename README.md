@@ -8,7 +8,7 @@ Hands-on Microsoft Sentinel investigations based on realistic attack simulations
 
 This repository contains end-to-end Microsoft Sentinel investigations based on realistic attack simulations performed in an isolated Azure lab. Each case documents the complete incident response workflow from detection to final classification.
 
-The objective is to develop practical skills in:
+This project focuses on developing practical skills in:
 
 - Incident Response
 - Threat Hunting
@@ -21,8 +21,9 @@ Each investigation includes:
 - Attack simulation
 - Alert generation
 - Evidence collection
-- Incident investigation
+- KQL detection and hunting queries
 - MITRE ATT&CK mapping
+- Incident investigation
 - Incident classification
 - Lessons learned
 
@@ -63,10 +64,10 @@ Each investigation includes:
 
 ### Investigation Cases
 
-| ID | Investigation | MITRE ATT&CK |Report | Status |
-|----|---------------|--------------|--------|
-| 001 | PowerShell Encoded Command Execution | T1059.001 | **[View Report](cases/001-PowerShell-EncodedCommand/)** | ✅ |
-| 002 | Brute Force Authentication Attack | T1110 | - | In Progress |
+| ID | Investigation | MITRE ATT&CK | Report | Status |
+|----|---------------|--------------|--------|--------|
+| 001 | PowerShell Encoded Command Execution | T1059.001 | **[View Report](cases/001-PowerShell-EncodedCommand/)** |  Completed |
+| 002 | Brute Force Authentication Attack | T1110 |Coming Soon| In Progress|
 
 ### Planned
 
