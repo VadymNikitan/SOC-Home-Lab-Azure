@@ -68,16 +68,12 @@ Each investigation includes:
 - ✅ Sysmon
 - ✅ Atomic Red Team
 
-  ### Featured Investigation
+### Investigation Cases
 
-Case 001 — PowerShell Encoded Command Execution
-
-- MITRE ATT&CK T1059.001
-- Microsoft Sentinel Investigation
-- Sysmon Analysis
-- Atomic Red Team Simulation
-
-➡ Read the full investigation
+| ID | Investigation | MITRE ATT&CK | Status |
+|----|---------------|--------------|--------|
+| 001 | PowerShell Encoded Command Execution | T1059.001 | **[View Report](cases/001-PowerShell-EncodedCommand/)** |
+| 002 | Brute Force Authentication Attack | T1110 | in process|
 
 ### Planned
 
