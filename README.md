@@ -1,6 +1,6 @@
 # Microsoft Sentinel SOC Investigation Lab
 
-Hands-on Microsoft Sentinel Incident Response & Threat Hunting Lab.
+Hands-on Microsoft Sentinel investigations based on realistic attack simulations.
 
 ---
 
@@ -46,13 +46,6 @@ Each investigation includes:
 
 ---
 
-#  Incident Cases
-
-| ID | Case | MITRE | Status |
-|----|------|--------|--------|
-|001|PowerShell Encoded Command Execution|T1059.001|✅|
-
----
 
 ##  Roadmap
 
@@ -70,10 +63,10 @@ Each investigation includes:
 
 ### Investigation Cases
 
-| ID | Investigation | MITRE ATT&CK | Status |
+| ID | Investigation | MITRE ATT&CK |Report | Status |
 |----|---------------|--------------|--------|
-| 001 | PowerShell Encoded Command Execution | T1059.001 | **[View Report](cases/001-PowerShell-EncodedCommand/)** |
-| 002 | Brute Force Authentication Attack | T1110 | in process|
+| 001 | PowerShell Encoded Command Execution | T1059.001 | **[View Report](cases/001-PowerShell-EncodedCommand/)** | ✅ |
+| 002 | Brute Force Authentication Attack | T1110 | - | In Progress |
 
 ### Planned
 
