@@ -1,4 +1,4 @@
-# SOC Home Lab (Azure)
+# Microsoft Sentinel SOC Investigation Lab
 
 Hands-on Microsoft Sentinel Incident Response & Threat Hunting Lab.
 
@@ -6,7 +6,7 @@ Hands-on Microsoft Sentinel Incident Response & Threat Hunting Lab.
 
 ##  Project Goals
 
-This repository documents hands-on Security Operations Center (SOC) investigations performed in a controlled Azure lab environment.
+This repository contains end-to-end Microsoft Sentinel investigations based on realistic attack simulations performed in an isolated Azure lab. Each case documents the complete incident response workflow from detection to final classification.
 
 The objective is to develop practical skills in:
 
@@ -51,30 +51,8 @@ Each investigation includes:
 | ID | Case | MITRE | Status |
 |----|------|--------|--------|
 |001|PowerShell Encoded Command Execution|T1059.001|✅|
-|002|Coming Soon||🚧|
 
 ---
-
-
-##  Repository Structure
-
-```text
-cases/
-    Individual incident investigations
-
-docs/
-    General documentation
-
-kql/
-    Detection and threat hunting queries
-
-playbooks/
-    Incident response playbooks
-
-images/
-    Shared screenshots
-```
-
 
 ##  Roadmap
 
@@ -89,6 +67,17 @@ images/
 - ✅ Azure Monitor Agent
 - ✅ Sysmon
 - ✅ Atomic Red Team
+
+  ### Featured Investigation
+
+Case 001 — PowerShell Encoded Command Execution
+
+- MITRE ATT&CK T1059.001
+- Microsoft Sentinel Investigation
+- Sysmon Analysis
+- Atomic Red Team Simulation
+
+➡ Read the full investigation
 
 ### Planned
 
