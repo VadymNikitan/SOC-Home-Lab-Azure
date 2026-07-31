@@ -1,4 +1,4 @@
-# Case 001: Suspicious PowerShell Execution Investigation
+# Case 001: PowerShell Encoded Command Execution
 ---
 
 ## Scenario
@@ -7,7 +7,7 @@ The objective was to validate the detection, analyze Sysmon telemetry, and deter
 
 ## Executive Summary
 
-Microsoft Sentinel generated an alert after detecting an encoded PowerShell command executed on a Windows endpoint. The investigation reconstructed the execution chain using Sysmon telemetry and confirmed that the activity originated from an authorized Atomic Red Team simulation. No evidence of persistence, credential access, lateral movement, or malicious network communication was identified.
+Microsoft Sentinel generated an alert after detecting an encoded PowerShell command executed on a Windows endpoint. The investigation reconstructed the execution chain using Sysmon telemetry and confirmed that the activity originated from an authorized Atomic Red Team simulation. No evidence of persistence, credential access, lateral movement, or malicious outbound network communication was identified.
 
 ## MITRE ATT&CK Mapping
 
@@ -59,7 +59,7 @@ Detect encoded PowerShell execution.
 
 ### Detection Logic
 
-The rule monitors:
+The analytics rule monitors:
 
 - Sysmon Event ID 1
 - PowerShell execution
@@ -111,7 +111,7 @@ Detected command-line parameters:
 
 ### Step 1 — Alert Validation
 
-Microsoft Sentinel generated an alert after execution of an encoded PowerShell command.
+Microsoft Sentinel generated an alert following the execution of an encoded PowerShell command.
 
 
 ![Incident Alert](./screenshots/01-incident-alert.png)
@@ -195,7 +195,7 @@ Query:
 
 Analysis:
 
-Temporary PowerShell execution policy test file.
+A temporary file associated with PowerShell execution policy testing was created.
 
 No suspicious payloads created.
 
@@ -264,7 +264,7 @@ Incident
 
 The investigation confirmed that an encoded PowerShell command was successfully executed.
 Although the activity matched the detection logic for MITRE ATT&CK technique T1059.001 (PowerShell), further analysis determined that it originated from an authorized Atomic Red Team simulation.
-Review of Sysmon telemetry found no evidence of malicious payload execution, persistence, credential access, lateral movement, or outbound network communication.
+Review of Sysmon telemetry found no evidence of malicious payload execution, persistence, credential access, lateral movement, or malicious outbound network communication.
 Based on the collected evidence, the incident was classified as a **Benign True Positive** and no additional response actions were required.
 
 ---
