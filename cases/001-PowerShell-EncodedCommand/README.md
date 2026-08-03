@@ -260,6 +260,50 @@ Incident
 | Classification | Benign True Positive |
 | Root Cause | Authorized Atomic Red Team Simulation |
 
+---
+
+## Remediation and Response Steps
+
+Although this incident was ultimately classified as a **Benign True Positive** due to the authorized Atomic Red Team simulation, a standardized response workflow has been documented to support analysts investigating similar alerts in production environments.
+
+### 1. Immediate Containment
+
+If the encoded PowerShell execution is determined to be unauthorized or malicious, the following containment actions should be performed immediately:
+
+- Isolate the endpoint using Microsoft Defender for Endpoint (MDE) or network access controls to prevent lateral movement.
+- Disable or reset the affected user account if compromise is suspected.
+- Terminate the malicious PowerShell process along with any associated child processes identified through Sysmon Event ID 1.
+
+---
+
+### 2. Investigation and Eradication
+
+After containment, perform additional investigation and remove any identified threats.
+
+- Identify and remove malicious payloads or temporary files discovered during Sysmon Event ID 11 analysis.
+- Inspect persistence mechanisms, including:
+  - Scheduled Tasks
+  - Registry Run Keys
+  - WMI Event Subscriptions
+  - Startup Folders
+- Review additional endpoint telemetry for evidence of privilege escalation, credential access, or lateral movement.
+- Reset privileged credentials if credential theft or dumping is suspected.
+
+---
+
+### 3. Recovery and Hardening
+
+Implement security improvements to reduce the likelihood of similar attacks.
+
+- Enable PowerShell Script Block Logging (Event ID 4104).
+- Enable PowerShell Module Logging (Event ID 4103).
+- Enforce PowerShell Constrained Language Mode where appropriate.
+- Implement Windows Defender Application Control (WDAC) or AppLocker to restrict unauthorized PowerShell execution.
+- Enforce PowerShell Execution Policies through Group Policy.
+- Review and tune Microsoft Sentinel analytics rules to reduce false positives while maintaining detection coverage.
+
+---
+
 ## Conclusion
 
 The investigation confirmed that an encoded PowerShell command was successfully executed.
