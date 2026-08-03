@@ -291,7 +291,7 @@ After containment, perform additional investigation and remove any identified th
 
 ---
 
-### 3. Recovery and Hardening
+### 3. Post-Incident Hardening & Mitigation
 
 Implement security improvements to reduce the likelihood of similar attacks.
 
