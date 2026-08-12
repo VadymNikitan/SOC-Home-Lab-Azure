@@ -52,6 +52,54 @@ The same time during investigation was detected two attempts acces from a public
 - Perform Source IP Analysis & Blast Radius Evaluation
 - Classify the incident
 
+  ---
+
+## Detection Rule
+
+### Objective
+
+Detects SMB password spraying attempts using NTLM failed logons across multiple user accounts.
+
+### Detection Logic
+
+The analytics rule monitors Windows Security Logs (`SecurityEvent`) for:
+- **Event ID 4625** (Failed Logon)
+- **LogonType 3** (Network Logon, representing remote connections like SMB)
+- **AuthenticationPackageName**: NTLM or Kerberos
+- High-velocity failure attempts from a single static source IP address across multiple distinct user accounts .
+
+
+![03-analytics-rule.png](./screenshots/03-analytics-rule.png)
+
+### KQL Query
+
+
+[01-Detection-Rule.kql](./queries/01-Detection-Rule.kql)
+
+---
+
+## Attack Simulation
+
+| Item | Value |
+|-|-|
+| Framework | Atomic Red Team |
+| Technique | T1059.001 |
+| Test | Atomic Test #17 |
+| Description | PowerShell Command Execution |
+
+![Atomic test](./screenshots/04-atomic-test-17.png)
+
+---
+
+## Alert Details
+
+| Field | Value |
+|-|-|
+| Alert | PowerShell Encoded Command Execution |
+| Severity | Medium |
+| Source | Microsoft Sentinel |
+| Host | CORP-WS-001 |
+
 
 
 
