@@ -32,7 +32,6 @@ During the log investigation, two additional failed authentication attempts were
 
 ---
 
-## Timeline
 
 ## Timeline
 
@@ -159,7 +158,219 @@ UniqueIPs: 2
 **FailureReasons:** ["0x80090308"] (SEC_E_UNTRUSTED_ROOT: Authentication failed during the TLS/network handshake phase due to untrusted certificate chain; connection dropped before credentials could be processed)
 
  
-The value 59 represents all matching NTLM authentication failures observed on CORP-WS-001 during the one-day investigation window. Bigger part of faild aatmpt occured before incident becouse I created a lot of attempt attack for create a correct detection rule.
+The value 59 represents all matching NTLM authentication failures observed on CORP-WS-001 during the one-day investigation window.As seen in incident page only 10 failed attempts linked to this case.The remaining majority of the failed attempts occurred before the incident was triggered, due to multiple simulated attack attempts executed for tuning a correct detection rule.
+
+### Step 3 - More detailed analysis to detect unique IPs 2:
+
+[04-More-detailed-analysis.kql](./queries/04-More-detailed-analysis.kql)
+
+![14-more-detailed-analysis.png](./screenshots/14-more-detailed-analysis.png)
+
+Detailed analysis: Identify distinct two source IPs 
+
+####  Review Detailed analysis 
+
+**Source 1**
+
+Source IP: 10.0.0.5
+
+Target Host: CORP-WS-001
+
+Activity: Event ID 4625
+
+Status: 0xc000006d (STATUS_LOGON_FAILURE)
+
+Target Accounts & Automation Timeline [UTC]
+
+Ten accounts were targeted in less than one second, demonstrating a high-velocity automated authentication pattern. 
+
+13:43:40.334 — Administrator
+
+13:43:40.361 — guest
+
+13:43:40.386 — backup_admin
+
+13:43:40.412 — j.doe
+
+13:43:40.432 — m.smith
+
+13:43:40.458 — a.ivanov
+
+13:43:40.483 — security_test
+
+13:43:40.508 — user1
+
+13:43:40.532 — user2
+
+13:43:40.560 — operator
+
+This pattern is consistent with the controlled Password Spray:
+
+One source IP → multiple accounts → rapid 4625 failures → NTLM network authentication.
+
+SubStatus context:
+
+0xc0000064 — the specified account does not exist.
+
+0xc000006a — the account exists, but the supplied password is incorrect.
+
+
+
+
+
+**Source 2** — Additional Authentication Noise
+
+The second source, 00.00.00.000, generated two failed authentication attempts against the same azureuser account:
+
+Source IP:       00.00.00.000
+
+Target Host:     CORP-WS-001
+
+Target Account:  azureuser
+
+13:45:03.694 — 4625
+13:45:09.065 — 4625
+
+Status:          0xc000006d
+
+SubStatus:       0xc000006a
+
+These events were intentionally generated as benign authentication noise, simulating a user entering an incorrect password twice.
+The activity does not satisfy the Password Spray detection condition because both failures target the same account:
+One source IP → one account →  2 failed 4625  → TargetedUsersCount = 1→ threshold ≥ 3 not reached
+
+Analyst interpretation: The two azureuser failures represent authentication noise rather than Password Spray. This demonstrates why the detection relies on distinct targeted accounts, rather than simply counting 4625 events.
+
+### Step 4 - Attack Source IP Analysis & Blast Radius Evaluation
+
+**Purpose:** Pivot directly to the malicious source IP address to verify the exact pattern of the horizontal password-spraying blast radius and list targeted accounts.
+
+[05-Attack-Source-IP-Analysis-&-Blast-Radius-Evaluation.kql](./queries/05-Attack-Source-IP-Analysis-&-Blast-Radius-Evaluation.kql)
+
+![15-source-ip-analysis-blast-radius-evaluation.png](./screenshots/15-source-ip-analysis-blast-radius-evaluation.png)
+
+The >=10 threshold is used for this laboratory investigation to reduce unrelated historical NTLM failures. Production thresholds should be calibrated against the organization's normal baseline.
+
+**My Idea:** The ultimate goal of any credential harvesting or guessing campaign is to compromise at least one account to establish initial access. If we detect even a single successful logon event (EventID == 4624) matching the same logon type (LogonType == 3) from the identified malicious IP address amidst hundreds of 4625 errors, the compromise hypothesis is validated, confirming that the attacker has successfully authenticated to the environment.
+Possible Outcomes & Next Steps:
+
+**- Outcome A** (No results / Empty Table): No successful authentication was observed from 10.0.0.5 during the investigation window. The observed password spray did not result in an observed successful network logon from the identified source.
+
+**Actions:** Continue monitoring the affected accounts and source IP, document the incident as a True Positive with no observed successful authentication, and close the incident according to the organization's response procedure.
+
+**- Outcome B** — Successful Authentication Observed (e.g., Row populated for account j.doe): A successful authentication was observed from the spray source. This strongly supports the compromise hypothesis and requires immediate investigation.
+
+  **- Actions:** Escalate for immediate incident response. Review the full 4624 context, determine the affected account's privileges and scope of access, initiate account containment and credential reset/revocation according to organizational procedures, isolate the affected host if compromise is suspected, and proceed to Live Forensic Collection where required.
+
+  ### Step 5 - Successful Authentication Check
+
+Run the critical query to establish whether Outcome A or Outcome B occurred
+
+[06-Successful-Authentication-Check.kql](./queries/06-Successful-Authentication-Check.kql)
+
+![16-successful-authentication-check.png](./screenshots/16-successful-authentication-check.png)
+
+
+
+
+
+
+### Step 3 — Detailed Multi-IP Isolation Analysis
+
+[04-More-detailed-analysis.kql](./queries/04-More-detailed-analysis.kql)
+
+![14-more-detailed-analysis.png](./screenshots/14-more-detailed-analysis.png)
+
+**Analysis Objective:** Identify and analyze the distinct behavioral signatures of the two isolated source IP addresses.
+
+#### Telemetry Review
+
+**Source 1 (Simulated Attack)**
+- **Source IP:** `10.0.0.5`
+- **Target Host:** `CORP-WS-001`
+- **Activity:** Event ID `4625` (Failed Logon)
+- **Status:** `0xc000006d` (`STATUS_LOGON_FAILURE`)
+
+*Target Accounts & Automation Timeline [UTC]:*
+Ten distinct corporate accounts were sequentially targeted in less than one second, demonstrating a high-velocity automated authentication pattern:
+- **13:43:40.334** — `Administrator`
+- **13:43:40.361** — `guest`
+- **13:43:40.386** — `backup_admin`
+- **13:43:40.412** — `j.doe`
+- **13:43:40.432** — `m.smith`
+- **13:43:40.458** — `a.ivanov`
+- **13:43:40.483** — `security_test`
+- **13:43:40.508** — `user1`
+- **13:43:40.532** — `user2`
+- **13:43:40.560** — `operator`
+
+*Analyst Note:* This behavior perfectly matches the horizontal Password Spraying signature: 
+`One source IP` ➔ `Multiple distinct accounts` ➔ `High-velocity 4625 entries` ➔ `NTLM Network Authentication (LogonType 3)`.
+
+*SubStatus Subsystem Context:*
+- `0xc0000064` (`STATUS_NO_SUCH_USER`): The specified account does not exist on the target system (blind dictionary spray).
+- `0xc000006a` (`STATUS_WRONG_PASSWORD`): The account exists, but the provided credential token was incorrect (`guest` account).
+
+**Source 2 (Additional Authentication Noise)**
+The second source, masked as `37.63.00.000`, generated two failed authentication events against the exact same local cloud management account:
+- **Source IP:** `37.63.00.000`
+- **Target Host:** `CORP-WS-001`
+- **Target Account:** `azureuser`
+- **Timeline:** `13:45:03.694` & `13:45:09.065` (Event ID `4625`)
+- **Status / SubStatus:** `0xc000006d` / `0xc000006a`
+
+*Analyst Note:* These events represent standard, automated external brute-force noise (simulating a basic user typo or generic bot traffic). This specific activity **does not** satisfy the analytical conditions of a Password Spraying alert because it focuses vertically on a single account name:
+`One source IP` ➔ `One single account` ➔ `Low-velocity 4625 failures` ➔ `TargetedUsersCount = 1` (Threshold of `≥ 3` unique users is not met).
+
+*Triage Conclusion:* The `azureuser` failures are classified as baseline internet scanning noise rather than an active multi-vector password spray. This highlights why robust analytics rules must aggregate by *distinct targeted accounts* (`dcount(TargetUserName)`) rather than just raw volume tracking.
+
+---
+
+### Step 4 — Attack Source IP Analysis & Blast Radius Evaluation
+
+**Purpose:** Pivot investigation resources directly to the malicious source IP address (`10.0.0.5`) to analyze the precise boundaries of the horizontal password-spraying blast radius and correlate targeted accounts.
+
+[05-Attack-Source-IP-Analysis-and-Blast-Radius-Evaluation.kql](./queries/05-Attack-Source-IP-Analysis-and-Blast-Radius-Evaluation.kql)
+
+![15-source-ip-analysis-blast-radius-evaluation.png](./screenshots/15-source-ip-analysis-blast-radius-evaluation.png)
+
+*Deployment Note:* A threshold of `≥ 10` is applied during this laboratory evaluation to suppress historical NTLM noise. Production rule thresholds should be continuously calibrated against the organization's normal historical baseline.
+
+**Core Analytical Hypothesis:** The ultimate objective of any credential-harvesting or password-guessing campaign is to compromise at least one corporate account to establish an initial foothold. If a single successful logon event (Event ID `4624`) matching the same authentication parameters (`LogonType 3`) is detected originating from the same suspicious source IP amidst a surge of `4625` events, the compromise hypothesis is validated, confirming active environment intrusion.
+
+#### Evaluated Outcomes & Triage Next Steps
+
+- **Outcome A (No Results / Empty Matrix):** 
+  No successful authentication events (`4624`) were recorded from `10.0.0.5` during the active investigation window. The active password spray failed to secure initial access.
+  - **Remediation Actions:** Continue standard network monitoring on the targeted accounts and the source IP. Document the event as a **True Positive (No Compromise)**, log the investigative artifacts, and close the incident within the SIEM queue according to normal operating procedures.
+
+- **Outcome B (Successful Authentication Observed):** 
+  A successful network authentication is observed from the spray source (e.g., active row populated for a user like `j.doe`). This confirms a critical breach of credentials.
+  - **Remediation Actions:** Escalate immediately to Tier-3 / Incident Response (IR) team. Extrapolate the full context of the `4624` event to identify the compromised account's network privileges. Initiate immediate credential revocation, force an Active Directory reset, isolate the affected endpoint (`CORP-WS-001`) from the local network segment, and pivot to active Live Forensic Collection.
+
+---
+
+### Step 5 — Successful Authentication Check
+
+Run the critical pivot query to confirm whether **Outcome A** or **Outcome B** occurred in the SIEM infrastructure:
+
+[06-Successful-Authentication-Check.kql](./queries/06-Successful-Authentication-Check.kql)
+
+![16-successful-authentication-check.png](./screenshots/16-successful-authentication-check.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
