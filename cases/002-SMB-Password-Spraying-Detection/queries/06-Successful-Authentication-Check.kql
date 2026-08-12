@@ -1,0 +1,6 @@
+SecurityEvent
+| where TimeGenerated > ago(30m)
+| where EventID == 4624
+| where LogonType == 3 and IpAddress == "10.0.0.5"
+| project TimeGenerated, Computer, TargetUserName, IpAddress, LogonType, AuthenticationPackageName
+| order by TimeGenerated desc
