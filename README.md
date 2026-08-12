@@ -67,7 +67,7 @@ Each investigation includes:
 | ID | Investigation | MITRE ATT&CK | Report | Status |
 |----|---------------|--------------|--------|--------|
 | 001 | PowerShell Encoded Command Execution | T1059.001 | **[View Report](cases/001-PowerShell-EncodedCommand/)** |  Completed |
-| 002 | Brute Force Authentication Attack | T1110 |Coming Soon| In Progress|
+| 002 | Brute Force: SMB Password Spraying Detection - NTLM Failed Logons | T1110.003 |**[View Report](cases/002-SMB-Password-Spraying-Detection/)**| Completed |
 
 ### Planned
 
