@@ -4,13 +4,13 @@
 ## Scenario
 This case demonstrates the investigation of a Microsoft Sentinel alert triggered by an automated SMB Password Spraying attack executed during an authorized internal security infrastructure validation. 
 
-The objective was to generate realistic network authentication telemetry using a custom user list, create  Microsoft Sentinel Analytics Rule and inspect raw Windows security event fields (specifically Event ID 4625, Logon Type 3, and SubStatus codes).
+The objective was to generate realistic network authentication telemetry using a custom user list, create a Microsoft Sentinel Analytics Rule, and inspect raw Windows Security Event fields (specifically Event ID 4625, Logon Type 3, and SubStatus codes).
 
 ## Executive Summary
 
 Microsoft Sentinel generated a Medium-severity alert after detecting an automated SMB Password Spraying pattern targeting a Windows endpoint (`CORP-WS-001`). The investigation reconstructed the attack timeline using Windows Security Event telemetry (`EventID 4625`, `LogonType 3`) and confirmed that the primary high-velocity activity originated from an authorized internal laboratory machine (`10.0.0.5`). 
 
-The same time during investigation was detected two attempts acces from a public Bulgarian IP address (`37.63.19.164`) . The Sentinel Analytics Rule successfully aggregated the telemetry, mapped the necessary entities, and validated that no successful credential access or lateral movement occurred during the simulation.
+During the log investigation, two additional failed authentication attempts were observed from a different public IP address (37.63.00.000), separate from the primary attack source (10.0.0.0).
 
 ## MITRE ATT&CK Mapping
 
@@ -34,11 +34,13 @@ The same time during investigation was detected two attempts acces from a public
 
 ## Timeline
 
+## Timeline
+
 | Time (UTC) | Event | Source |
 |------------|-------|--------|
-| Aug 11, 2026 4:32:18 PM | First activity:Detects SMB password spraying | Microsoft Sentinel |
-| Aug 11, 2026 4:47:18 PM | Last activity| Microsoft Sentinel |
-| Aug 11, 2026 4:53:12 PM | Incident created | Microsoft Sentinel |
+| Aug 11, 2026 16:32:18 | SMB authentication failures detected | Windows Security Event 4625 |
+| Aug 11, 2026 16:47:18 | Password spraying activity observed | Microsoft Sentinel |
+| Aug 11, 2026 16:53:12 | Incident created | Microsoft Sentinel |
 
 ---
 
@@ -46,7 +48,7 @@ The same time during investigation was detected two attempts acces from a public
 
 - Trigger Controlled Password Spray
 - Create Microsoft Sentinel Scheduled Analytics Rule for Network Logons
-- Check Microsoft Defender Incident Entities
+- Review Microsoft Sentinel incident entities
 - Analyze Windows Security Event ID 4625 (Failed Logon)
 - Inspect low-level authentication failure codes (`Status: 0xc000006d`, `SubStatus: 0xc0000064` / `0xc000006a`)
 - Perform Source IP Analysis & Blast Radius Evaluation
@@ -65,7 +67,7 @@ Detects SMB password spraying attempts using NTLM failed logons across multiple 
 The analytics rule monitors Windows Security Logs (`SecurityEvent`) for:
 - **Event ID 4625** (Failed Logon)
 - **LogonType 3** (Network Logon, representing remote connections like SMB)
-- **AuthenticationPackageName**: NTLM or Kerberos
+- **AuthenticationPackageName**: NTLM 
 - High-velocity failure attempts from a single static source IP address across multiple distinct user accounts .
 
 
@@ -75,6 +77,7 @@ The analytics rule monitors Windows Security Logs (`SecurityEvent`) for:
 
 
 [01-Detection-Rule.kql](./queries/01-Detection-Rule.kql)
+
 
 ---
 
