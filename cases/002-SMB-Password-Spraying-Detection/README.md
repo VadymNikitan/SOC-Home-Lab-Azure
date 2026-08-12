@@ -358,15 +358,15 @@ After initial containment, perform deep-dive forensics to identify and remove an
 Implement proactive security enhancements to reduce the attack surface against remote credential-guessing campaigns:
 
 - **Network-Level Hardening:** Restrict inbound SMB traffic (TCP Port 445) strictly to trusted domain controllers and administrative management subnets using Windows Firewall:
-  ```powershell
 
-> **Production consideration:** SMB access should be restricted to required systems and network segments rather than broadly disabling File and Printer Sharing. Firewall rules and network ACLs should allow TCP/445 only where operationally required.
-  ```
+ **Production consideration:** SMB access should be restricted to required systems and network segments rather than broadly disabling File and Printer Sharing. Firewall rules and network ACLs should allow TCP/445 only where operationally required.
+ 
 - **Disable Legacy Protocols:** Permanently deactivate the obsolete and vulnerable SMBv1 protocol across the entire infrastructure:
-  ```powershell
+ 
   Set-SmbServerConfiguration -EnableSMB1Protocol \$false -Force
-  ```
+  
 - **Enforce Kerberos & Restrict NTLM:** Transition local network authentication away from legacy NTLM (which is highly vulnerable to spraying and relaying) toward Kerberos. Implement Restrict NTLM policies via Group Policy (GPO).
+
 - **Account Lockout Policies:** Configure robust Account Lockout Thresholds and duration settings to mitigate rapid, vertical brute-force variants without causing massive denial-of-service states across the organization.
 
 ---
