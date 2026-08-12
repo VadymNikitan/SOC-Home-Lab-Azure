@@ -1,0 +1,6 @@
+SecurityEvent
+| where TimeGenerated > ago(30m)
+| where Computer == "CORP-WS-001"
+| where EventID == 4625
+| where SubStatus in ("0xc000006d", "0x80090308") or Status in ("0xc000006d", "0x80090308")
+| project TimeGenerated, Computer, IpAddress, TargetUserName, Status, SubStatus, Activity
