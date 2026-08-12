@@ -65,9 +65,9 @@ Detects SMB password spraying attempts using NTLM failed logons across multiple 
 ### Detection Logic
 
 The analytics rule monitors Windows Security Logs (`SecurityEvent`) for:
-- **Event ID 4625** (Failed Logon)
-- **LogonType 3** (Network Logon, representing remote connections like SMB)
-- **AuthenticationPackageName**: NTLM 
+- Event ID 4625 (Failed Logon)
+- LogonType 3 (Network Logon, representing remote connections like SMB)
+- AuthenticationPackageName: NTLM 
 - High-velocity failure attempts from a single static source IP address across multiple distinct user accounts .
 
 
@@ -83,14 +83,24 @@ The analytics rule monitors Windows Security Logs (`SecurityEvent`) for:
 
 ## Attack Simulation
 
-| Item | Value |
-|-|-|
-| Framework | Atomic Red Team |
-| Technique | T1059.001 |
-| Test | Atomic Test #17 |
-| Description | PowerShell Command Execution |
 
-![Atomic test](./screenshots/04-atomic-test-17.png)
+| Item| Value |
+|---|---|
+| Target Service | SMB (Server Message Block) |
+| Execution Tool | NetExec / CrackMapExec |
+| Attack Type | Password Spraying |
+| Test Strategy | Testing a single popular password against multiple accounts |
+|Account and passwords list | one password → many accounts pattern |
+
+### Controlled SMB Password Spray:
+**bash**
+
+crackmapexec smb 10.0.0.4 -u /tmp/users.txt -p 'Summer2026!'
+
+
+
+![06-account-and-passwords-list.png](./screenshots/06-account-and-passwords-list.png)
+![08-password-spray.png](./screenshots/08-password-spray.png)
 
 ---
 
@@ -98,10 +108,62 @@ The analytics rule monitors Windows Security Logs (`SecurityEvent`) for:
 
 | Field | Value |
 |-|-|
-| Alert | PowerShell Encoded Command Execution |
+| Alert |SMB Password Spray Detection - NTLM Failed Logons |
 | Severity | Medium |
 | Source | Microsoft Sentinel |
 | Host | CORP-WS-001 |
+
+---
+
+
+## Investigation
+### Step 1 - Verify Raw 4625 Events
+After the final attack, ensure logs arrived at the SIEM repository
+
+[02-Verify-Raw-4625-Events.kql](./queries/02-Verify Raw-4625-Events.kql)
+
+![09-verify-raw-4625-events.png](./screenshots/09-verify-raw-4625-events.png)
+
+
+### Step 2 — Incident Validation 
+
+Microsoft Sentinel generated a incident SMB Password Spray Detection - NTLM Failed Logons.
+
+![10-microsoft-defender-incident.png](./screenshots/10-microsoft-defender-incident.png)
+![11-microsoft-defender-incident-02.png](./screenshots/11-microsoft-defender-incident-02.png)
+![12-microsoft-defender-incident-03.png](./screenshots/12-microsoft-defender-incident-03.png)
+
+### Findings
+IP: 10.0.0.5
+Host: CORP-WS-001
+
+
+### Step 2 — Process Analysis 
+### SOC Analyst Triage:General overview of logs for one day (where EventID == 4625 and AuthenticationPackageName has "NTLM")
+
+Purpose: Before focusing exclusively on the current Password Spray incident, Ireview the broader NTLM authentication-failure activity observed on the affected host during the previous 24 hours. The goal is to distinguish the current laboratory attack from unrelated historical authentication activity.
+
+[03-General-overview-of-logs-for-one-day.kql](./queries/03-General-overview-of-logs-for-one-day.kql)
+![13-global-infrastructure-context.png](./screenshots/13-global-infrastructure-context.png)
+
+#### Result:
+
+Computer: CORP-WS-001
+
+FailedAttempts: 59 
+
+UniqueIPs: 2 
+
+**FailureReasons:** ["0xc000006d"] (Windows sign-in failure caused by a bad username, incorrect password, or corrupted Windows Hello PIN data)
+
+**FailureReasons:** ["0x80090308"] (SEC_E_UNTRUSTED_ROOT: Authentication failed during the TLS/network handshake phase due to untrusted certificate chain; connection dropped before credentials could be processed)
+
+ 
+The value 59 represents all matching NTLM authentication failures observed on CORP-WS-001 during the one-day investigation window. Bigger part of faild aatmpt occured before incident becouse I created a lot of attempt attack for create a correct detection rule.
+
+
+
+
 
 
 
