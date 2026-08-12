@@ -1,0 +1,7 @@
+SecurityEvent
+| where TimeGenerated > ago(30m)
+| where EventID == 4625 and AuthenticationPackageName has "NTLM"
+| where isnotempty(IpAddress) and IpAddress !in ("-", "127.0.0.1", "::1")
+| summarize FailedAttempts=count(), TargetAccounts=make_set(TargetUserName, 10) by IpAddress
+| where FailedAttempts >= 10
+| order by FailedAttempts desc
