@@ -1,0 +1,18 @@
+SecurityEvent
+| where TimeGenerated > ago(15m)
+| where EventID == 4625
+| where LogonType == 3
+| where AuthenticationPackageName == "NTLM"
+| where isnotempty(IpAddress)
+| where IpAddress !in ("-", "127.0.0.1", "::1")
+| where isnotempty(TargetUserName)
+| summarize
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated),
+    FailedAttempts = count(),
+    TargetedUsersCount = dcount(TargetUserName),
+    UserList = make_set(TargetUserName),
+    AttackedHostsCount = dcount(Computer),
+    HostList = make_set(Computer)
+    by IpAddress
+| where TargetedUsersCount >= 3
