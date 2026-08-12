@@ -314,6 +314,11 @@ If a successful 4624 event is detected, immediately pivot to the targeted host a
          [ Security Incident Created ]
 
 
+```
+
+
+
+
 ## Incident Classification
 
 | Field | Result |
