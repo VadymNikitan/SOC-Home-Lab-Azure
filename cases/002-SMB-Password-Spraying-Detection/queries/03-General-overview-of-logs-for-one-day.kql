@@ -1,0 +1,5 @@
+SecurityEvent
+| where TimeGenerated > ago(1d)
+| where EventID == 4625 and AuthenticationPackageName has "NTLM"
+| summarize FailedAttempts=count(), UniqueIPs=dcount(IpAddress), FailureReasons=make_set(Status,5) by Computer
+| order by FailedAttempts desc
