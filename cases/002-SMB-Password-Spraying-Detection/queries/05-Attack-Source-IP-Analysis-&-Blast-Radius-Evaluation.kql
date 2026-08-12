@@ -5,3 +5,4 @@ SecurityEvent
 | summarize FailedAttempts=count(), TargetAccounts=make_set(TargetUserName, 10) by IpAddress
 | where FailedAttempts >= 10
 | order by FailedAttempts desc
+
