@@ -1,5 +1,0 @@
-SecurityEvent
-| where TimeGenerated > ago(5m)
-| where EventID == 4625
-| project TimeGenerated, Computer, TargetUserName, IpAddress, LogonType, AuthenticationPackageName, FailureReason
-| order by TimeGenerated desc
