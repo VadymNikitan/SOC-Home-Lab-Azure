@@ -69,7 +69,7 @@ The analytics rule monitors Windows Security Logs (`SecurityEvent`) for:
 - High-velocity failure attempts from a single static source IP address across multiple distinct user accounts .
 
 
-![03-analytics-rule.png](./screenshots/03-analytics-rule.png)
+![17-analytics-rule.png](./screenshots/17-analytics-rule.png)
 
 ### KQL Query
 
