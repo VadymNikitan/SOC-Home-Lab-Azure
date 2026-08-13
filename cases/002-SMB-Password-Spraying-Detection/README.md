@@ -148,8 +148,10 @@ Microsoft Sentinel generated an incident: **SMB Password Spray Detection - NTLM 
 ![12-microsoft-defender-incident-03.png](./screenshots/12-microsoft-defender-incident-03.png)
 
 ### Findings
-IP: 10.0.0.5
-Host: CORP-WS-001
+
+IP: `10.0.0.5`
+
+Host:  `CORP-WS-001`
 
 
 ### Step 3 — Process Analysis 
@@ -162,7 +164,7 @@ Purpose: Before focusing exclusively on the current Password Spray incident, I r
 
 #### Result:
 
-Computer: CORP-WS-001
+Computer: `CORP-WS-001`
 
 FailedAttempts: 59 
 
