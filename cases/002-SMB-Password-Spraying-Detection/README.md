@@ -1,8 +1,8 @@
-# Case 002: SMB Password Spray Detection - NTLM Failed Logons
+# Case 002: SMB Password Spray Detection — NTLM Failed Logons
 ---
 
 ## Scenario
-This case demonstrates the investigation of a Microsoft Sentinel alert triggered by an automated SMB Password Spraying attack executed during an authorized internal security infrastructure validation. 
+This case demonstrates the investigation of a Microsoft Sentinel alert triggered by an automated SMB password spraying attack performed as part of an authorized internal security infrastructure validation.
 
 The objective was to generate realistic network authentication telemetry using a custom user list, create a Microsoft Sentinel Analytics Rule, and inspect raw Windows Security Event fields (specifically Event ID 4625, Logon Type 3, and SubStatus codes).
 
@@ -10,7 +10,7 @@ The objective was to generate realistic network authentication telemetry using a
 
 Microsoft Sentinel generated a Medium-severity alert after detecting an automated SMB Password Spraying pattern targeting a Windows endpoint (`CORP-WS-001`). The investigation reconstructed the attack timeline using Windows Security Event telemetry (`EventID 4625`, `LogonType 3`) and confirmed that the primary high-velocity activity originated from an authorized internal laboratory machine (`10.0.0.5`). 
 
-During the log investigation, two additional failed authentication attempts were observed from a different public IP address (37.63.00.000), separate from the primary attack source (10.0.0.0).
+During the log investigation, two additional failed authentication attempts were observed from a different public IP address (`REDACTED_PUBLIC_IP`), separate from the primary attack source (`10.0.0.5`). 
 
 ## MITRE ATT&CK Mapping
 
@@ -23,8 +23,8 @@ During the log investigation, two additional failed authentication attempts were
 | Component | Value |
 |---|---|
 | SIEM | Microsoft Sentinel |
-| Telemetry | Windows Security Events (EventID 4625) |
-| Log Collection | Log Analytics Workspace / AMA |
+| Telemetry | Windows Security Events (`EventID 4625`) |
+| Log Collection | Azure Monitor Agent (AMA) / Log Analytics Workspace |
 | Target Host | CORP-WS-001 |
 | Attacking Host | Kali Linux (`10.0.0.5`) |
 | Simulation | Controlled Network Authentication Spray |
@@ -41,7 +41,7 @@ During the log investigation, two additional failed authentication attempts were
 | Aug 11, 2026 16:47:18 | Last activity associated with the alert | Microsoft Sentinel |
 | Aug 11, 2026 16:53:12 | Incident created | Microsoft Sentinel |
 
-> **Important:** The `First activity` and `Last activity` timestamps displayed on the incident page represent the activity window associated with the alert/incident. They should not be interpreted as the duration of the Password Spray attack.
+> **Important:** Microsoft Sentinel displays incident activity timestamps according to the configured workspace or portal time zone, while the raw Windows Security Event timestamps used in this investigation are represented in UTC. The `First activity` and `Last activity` timestamps displayed on the incident page represent the broader activity window associated with the alert/incident and should not be interpreted as the duration of the Password Spray attack.
 
 ### Actual Password Spray Event Sequence
 
@@ -57,12 +57,12 @@ The raw event timestamps are therefore used to determine the actual attack veloc
 
 ## Objectives
 
-- Trigger Controlled Password Spray
+- Trigger a controlled password spray
 - Create Microsoft Sentinel Scheduled Analytics Rule for Network Logons
 - Review Microsoft Sentinel incident entities
 - Analyze Windows Security Event ID 4625 (Failed Logon)
 - Inspect low-level authentication failure codes (`Status: 0xc000006d`, `SubStatus: 0xc0000064` / `0xc000006a`)
-- Perform Source IP Analysis & Blast Radius Evaluation
+- Perform source IP analysis and blast radius evaluation
 - Classify the incident
 
   ---
@@ -71,7 +71,7 @@ The raw event timestamps are therefore used to determine the actual attack veloc
 
 ### Objective
 
-Detects SMB password spraying attempts using NTLM failed logons across multiple user accounts.
+Detect SMB password spraying attempts using NTLM failed logons across multiple user accounts.
 
 ### Detection Logic
 
@@ -81,14 +81,12 @@ The analytics rule monitors Windows Security Logs (`SecurityEvent`) for:
 - **AuthenticationPackageName**: NTLM
 - High-velocity failure attempts from a single source IP address across multiple distinct user accounts.
 
-In this case, Logon Type 3 authentication activity was associated with SMB network logons.
+In this case, Logon Type 3 represents network logon activity and, in this case, the observed authentication attempts were associated with SMB network access.
 
 
 ![17-analytics-rule.png](./screenshots/17-analytics-rule.png)
 
 ### KQL Query
-
-
 [01-Detection-Rule.kql](./queries/01-Detection-Rule.kql)
 
 
@@ -100,7 +98,7 @@ In this case, Logon Type 3 authentication activity was associated with SMB netwo
 | Item| Value |
 |---|---|
 | Target Service | SMB (Server Message Block) |
-| Execution Tool | NetExec / CrackMapExec |
+| Execution Tool | CrackMapExec |
 | Attack Type | Password Spraying |
 | Test Strategy | Testing a single popular password against multiple accounts |
 |Account and passwords list | one password → many accounts pattern |
@@ -121,7 +119,7 @@ crackmapexec smb 10.0.0.4 -u /tmp/users.txt -p 'Summer2026!'
 
 | Field | Value |
 |-|-|
-| Alert |SMB Password Spray Detection - NTLM Failed Logons |
+| Alert |SMB Password SMB Password Spray Detection — NTLM Failed Logons |
 | Severity | Medium |
 | Source | Microsoft Sentinel |
 | Host | CORP-WS-001 |
@@ -130,17 +128,20 @@ crackmapexec smb 10.0.0.4 -u /tmp/users.txt -p 'Summer2026!'
 
 
 ## Investigation
-### Step 1 - Verify Raw 4625 Events
-After the final attack, ensure logs arrived at the SIEM repository
 
-[02-Verify-Raw-4625-Events.kql](./queries/02-Verify Raw-4625-Events.kql)
+### Step 1 - Verify Raw 4625 Events
+After the attack simulation, verify that the Windows Security Event 4625 logs were successfully ingested into Microsoft Sentinel.
+
+### KQL Query
+[02-Verify-Raw-4625-Events.kql](./queries/02-Verify-Raw-4625-Events.kql)
+
 
 ![09-verify-raw-4625-events.png](./screenshots/09-verify-raw-4625-events.png)
 
 
 ### Step 2 — Incident Validation 
 
-Microsoft Sentinel generated a incident SMB Password Spray Detection - NTLM Failed Logons.
+Microsoft Sentinel generated an incident: **SMB Password Spray Detection - NTLM Failed Logons**.
 
 ![10-microsoft-defender-incident.png](./screenshots/10-microsoft-defender-incident.png)
 ![11-microsoft-defender-incident-02.png](./screenshots/11-microsoft-defender-incident-02.png)
@@ -154,7 +155,7 @@ Host: CORP-WS-001
 ### Step 3 — Process Analysis 
 ### SOC Analyst Triage:General overview of logs for one day (where EventID == 4625 and AuthenticationPackageName has "NTLM")
 
-Purpose: Before focusing exclusively on the current Password Spray incident, Ireview the broader NTLM authentication-failure activity observed on the affected host during the previous 24 hours. The goal is to distinguish the current laboratory attack from unrelated historical authentication activity.
+Purpose: Before focusing exclusively on the current Password Spray incident, I review the broader NTLM authentication-failure activity observed on the affected host during the previous 24 hours. The goal is to distinguish the current laboratory attack from unrelated historical authentication activity.
 
 [03-General-overview-of-logs-for-one-day.kql](./queries/03-General-overview-of-logs-for-one-day.kql)
 ![13-global-infrastructure-context.png](./screenshots/13-global-infrastructure-context.png)
@@ -167,12 +168,12 @@ FailedAttempts: 59
 
 UniqueIPs: 2 
 
-**FailureReasons:** ["0xc000006d"] (Windows sign-in failure caused by a bad username, incorrect password, or corrupted Windows Hello PIN data)
+**FailureReasons:** ["0xc000006d"] (Windows sign-in failure caused by a bad username, incorrect password)
 
 **FailureReasons:** ["0x80090308"] (SEC_E_INVALID_TOKEN): The security token supplied during authentication was invalid or could not be processed.
 
  
-The value 59 represents all matching NTLM authentication failures observed on CORP-WS-001 during the one-day investigation window.As seen in incident page only 10 failed attempts linked to this case.The remaining majority of the failed attempts occurred before the incident was triggered, due to multiple simulated attack attempts executed for tuning a correct detection rule.
+The value 59 represents all matching NTLM authentication failures observed on CORP-WS-001 during the one-day investigation window. As seen in incident page only 10 failed attempts linked to this case.The remaining majority of the failed attempts occurred before the incident was triggered, due to multiple simulated attack attempts executed for tuning a correct detection rule.
 
 ### Step 4 - More detailed analysis to detect unique IPs 2:
 
@@ -190,7 +191,7 @@ Detailed analysis: Identify distinct two source IPs
 - **Activity:** Event ID `4625` (Failed Logon)
 - **Status:** `0xc000006d` (`STATUS_LOGON_FAILURE`)
 
-Target Accounts & Automation Timeline [UTC]
+### Target Accounts & Automation Timeline [UTC]
 
 Ten accounts were targeted in less than one second, demonstrating a high-velocity automated authentication pattern. 
 - **13:43:40.334** — `Administrator`
@@ -204,7 +205,7 @@ Ten accounts were targeted in less than one second, demonstrating a high-velocit
 - **13:43:40.532** — `user2`
 - **13:43:40.560** — `operator`
 
-This pattern is consistent with the controlled Password Spray:
+This pattern is consistent with the controlled password spray:
 
 One source IP → multiple accounts → rapid 4625 failures → NTLM network authentication.
 
@@ -218,9 +219,9 @@ SubStatus context:
 
 **Source 2** — (Additional Authentication Noise)**
 
-The second source, 00.00.00.000, generated two failed authentication attempts against the same azureuser account:
+The second source `(REDACTED_PUBLIC_I)`) generated two failed authentication attempts against the same azureuser account:
 
-- **Source IP:** `00.00.00.000`
+- **Source IP:** `(REDACTED_PUBLIC_I)`
 - **Target Host:** `CORP-WS-001`
 - **Target Account:** `azureuser`
 - **Timeline:** `13:45:03.694` & `13:45:09.065` (Event ID `4625`)
@@ -229,30 +230,36 @@ The second source, 00.00.00.000, generated two failed authentication attempts ag
 
 These events were intentionally generated as benign authentication noise, simulating a user entering an incorrect password twice.
 The activity does not satisfy the Password Spray detection condition because both failures target the same account:
-One source IP → one account →  2 failed 4625  → TargetedUsersCount = 1→ threshold ≥ 3 not reached
+**One source IP → one account → 2 failed 4625 events → `TargetedUsersCount = 1` → threshold of ≥3 not reached.**
 
 **Analyst interpretation:** The two `azureuser` failures are treated as benign authentication noise in this controlled laboratory scenario rather than Password Spray. This demonstrates why the detection relies on **distinct targeted accounts**, rather than simply counting `4625` events.
 
 ### Step 5 - Attack Source IP Analysis & Blast Radius Evaluation
 
-**Purpose:** Pivot directly to the malicious source IP address to verify the exact pattern of the horizontal password-spraying blast radius and list targeted accounts.
+**Purpose:** Pivot directly to the identified attack source IP to verify the horizontal password-spraying pattern, determine the blast radius, and identify the targeted accounts.
 
 [05-Attack-Source-IP-Analysis-&-Blast-Radius-Evaluation.kql](./queries/05-Attack-Source-IP-Analysis-&-Blast-Radius-Evaluation.kql)
 
 ![15-source-ip-analysis-blast-radius-evaluation.png](./screenshots/15-source-ip-analysis-blast-radius-evaluation.png)
 
-The >=10 threshold is used for this laboratory investigation to reduce unrelated historical NTLM failures. Production thresholds should be calibrated against the organization's normal baseline.
+The `>=10` threshold is used for this laboratory investigation to reduce unrelated historical NTLM failures. Production thresholds should be calibrated against the organization's normal baseline.
 
 **Analyst hypothesis:** A successful network logon (EventID == 4624, LogonType == 3) from the identified spray source may indicate that valid credentials were successfully used. However, a single 4624 event does not by itself prove account compromise. The analyst must validate the authentication context, including the targeted account, source IP, authentication package, timing, account privileges, and subsequent activity.
 Possible Outcomes & Next Steps:
 
-**- Outcome A** No successful network authentication (4624, LogonType == 3) was observed from 10.0.0.5 during the investigation window. Based on the available telemetry, there is no evidence that the observed Password Spray resulted in a successful authentication from the identified source.
 
-**Actions:**Continue monitoring the targeted accounts and source IP, document the incident as a True Positive — Password Spray, No Successful Authentication Observed, and close or continue the incident according to the organization's response procedure.
 
-**- Outcome B** A successful network authentication (EventID == 4624, LogonType == 3) was observed from the identified spray source, for example against the j.doe account. This provides strong evidence that valid credentials were successfully used and significantly increases the likelihood of account compromise. The analyst should immediately validate the full authentication context and investigate subsequent activity.
+**Outcome A — No Successful Authentication**
 
-  **- Actions:** Escalate for immediate incident response. Review the complete 4624 event and correlate it with the preceding 4625 failures. Determine the affected account's privileges and scope of access, verify whether the account is legitimate for the source host, initiate account containment and credential reset/revocation according to organizational procedures, and investigate subsequent activity on the affected host. Isolate the host when compromise or unauthorized activity is suspected and proceed with live forensic collection where required.
+No successful network authentication (`4624`, Logon Type `3`) was observed from `10.0.0.5` during the investigation window. Based on the available telemetry, there is no evidence that the observed password spray resulted in a successful authentication from the identified source.
+
+**Actions:** Continue monitoring the targeted accounts and source IP, document the incident as a **True Positive — Password Spray, No Successful Authentication Observed**, and close or continue the incident according to the organization's response procedure.
+
+**Outcome B — Successful Authentication Observed**
+
+A successful network authentication (`4624`, Logon Type `3`) was observed from the identified spray source, for example against the `j.doe` account. This provides strong evidence that valid credentials were successfully used and significantly increases the likelihood of account compromise. The analyst should immediately validate the full authentication context and investigate subsequent activity.
+
+**Actions:** Escalate for immediate incident response. Review the complete `4624` event and correlate it with the preceding `4625` failures. Determine the affected account's privileges and scope of access, verify whether the account is legitimate for the source host, initiate account containment and credential reset or revocation according to organizational procedures, and investigate subsequent activity on the affected host. Isolate the host when compromise or unauthorized activity is suspected and proceed with live forensic collection where required.
 
   ### Step 6 - Successful Authentication Check
 
