@@ -263,23 +263,24 @@ A successful network authentication (`4624`, Logon Type `3`) was observed from t
 
 **Actions:** Escalate for immediate incident response. Review the complete `4624` event and correlate it with the preceding `4625` failures. Determine the affected account's privileges and scope of access, verify whether the account is legitimate for the source host, initiate account containment and credential reset or revocation according to organizational procedures, and investigate subsequent activity on the affected host. Isolate the host when compromise or unauthorized activity is suspected and proceed with live forensic collection where required.
 
-  ### Step 6 - Successful Authentication Check
+### Step 6 - Successful Authentication Check
 
 Run the critical query to establish whether Outcome A or Outcome B occurred
 
 [06-Successful-Authentication-Check.kql](./queries/06-Successful-Authentication-Check.kql)
 
 ![16-successful-authentication-check.png](./screenshots/16-successful-authentication-check.png)
+**Lab Result:** The query returned 0 rows (Outcome A). No successful network authentication from the identified spray source was observed during the investigation window. 
 
-**Lab Result Note:** The query returned 0 rows (Outcome A). No successful network authentication from the identified spray source was observed during the investigation window. 
+### Analyst Guidance for Outcome B Triage
 
- Analyst Guidance for Outcome B Triage (If a successful logon is ever found in production):
-If a successful 4624 event is detected, immediately pivot to the targeted host and run live triage tools to check the damage:
-**Check Active Sessions:** Run Get-SmbSession to see if the attacker is currently connected or downloading assets (NumOpenFiles).
+If a successful `4624` event is detected in a production environment, immediately pivot to the targeted host and perform live triage to determine whether post-authentication activity occurred.
 
-**Inspect Accessed Files:** Run Get-SmbOpenFile to identify exposed sensitive network files or administrative directories (C$, ADMIN$).
+**Check Active SMB Sessions:** Run `Get-SmbSession` to determine whether an active SMB session exists from the identified source.
 
-**Hunt for Code Execution:** Scan the System event log for Event ID 7045 (New Service Created) to catch post-exploitation tools like psexec or smbexec pushing malicious payloads.
+**Inspect Open SMB Files:** Run `Get-SmbOpenFile` to identify files currently accessed through SMB sessions and determine whether sensitive files or administrative shares (`C$`, `ADMIN$`) were accessed.
+
+**Hunt for Service-Based Execution:** Review the System event log for Event ID `7045` (New Service Created) to identify potential post-exploitation activity, including remote service creation associated with tools such as PsExec.
 
 
 
@@ -289,7 +290,7 @@ If a successful 4624 event is detected, immediately pivot to the targeted host a
 |---|---|
 | Password Spraying | Confirmed (10 Accounts targeted) |
 | High-Velocity Automation Signature | Confirmed |
-| Target User accounts | Completed (`Administrator`, `guest`, etc.) |
+| Target User accounts | Identified (`Administrator`, `guest`, etc. |
 | Successful Network Authentication (`4624`) | Not Observed |
 | Lateral Movement Attempt | Not Observed |
 
@@ -298,7 +299,7 @@ If a successful 4624 event is detected, immediately pivot to the targeted host a
 ```text
        [ Kali Linux (10.0.0.5) ]
                    │
-                   ▼ (NetExec / CrackMapExec)
+                   ▼ (CrackMapExec)
       [ SMB Password Spray (TCP 445) ]
                    │
                    ▼ 
@@ -343,11 +344,11 @@ Although this incident was ultimately classified as a **Benign True Positive** d
 
 ### 1. Immediate Containment
 
-If the SMB Password Spraying activity is determined to be unauthorized or malicious, the following containment actions must be performed immediately:
+If the SMB password spraying activity is determined to be unauthorized or malicious, the following containment actions should be performed immediately:
 
-- Isolate the targeted endpoint (`CORP-WS-001`) from the local network segment using Microsoft Defender for Endpoint (MDE) isolation or network access control lists (ACLs) to prevent any potential lateral movement.
-- If any successful login (`EventID 4624`) is observed from the malicious IP, immediately disable or revoke active sessions for the compromised user account.
-- Block the attacking source IP address (`10.0.0.5` internally or external public IPs) at the perimeter firewall or local Windows Defender Firewall interface.
+- Isolate the targeted endpoint (`CORP-WS-001`) using Microsoft Defender for Endpoint (MDE) isolation or appropriate network access controls to prevent potential lateral movement.
+- If a successful network authentication (`Event ID 4624`) is observed from the identified malicious source, disable or contain the affected user account and terminate active sessions as appropriate.
+- Block the identified attacking source IP address at the perimeter firewall or local Windows Defender Firewall when the source is unauthorized or malicious.
 
 ---
 
@@ -358,7 +359,7 @@ After initial containment, perform deep-dive forensics to identify and remove an
 - Inspect the affected endpoint for signs of successful credential dumping (e.g., LSASS parsing, registry hive exports) if any targeted accounts possessed administrative privileges.
 - Audit network session logs to verify if the attacker attempted to pivot to other domain resources via SMB/RPC admin shares (`C$`, `ADMIN$`).
 - Review additional endpoint telemetry to ensure no persistent malicious services, scheduled tasks, or remote management tools (like PsExec) were installed prior to containment.
-- Enforce a mandatory, organization-wide password reset for all targeted accounts if there is a suspicion of dictionary harvesting success.
+- Enforce a password reset for targeted accounts if successful credential guessing or account compromise is suspected.
 
 ---
 
@@ -366,28 +367,33 @@ After initial containment, perform deep-dive forensics to identify and remove an
 
 Implement proactive security enhancements to reduce the attack surface against remote credential-guessing campaigns:
 
-- **Network-Level Hardening:** Restrict inbound SMB traffic (TCP Port 445) strictly to trusted domain controllers and administrative management subnets using Windows Firewall:
+- **Multi-Factor Authentication (MFA):** Enforce MFA across all user accounts and require stronger, phishing-resistant authentication methods for privileged and high-value accounts where supported.
 
- **Production consideration:** SMB access should be restricted to required systems and network segments rather than broadly disabling File and Printer Sharing. Firewall rules and network ACLs should allow TCP/445 only where operationally required.
+- **Network-Level Hardening:** Restrict inbound SMB traffic (TCP port `445`) to trusted systems and required administrative management subnets using Windows Firewall and network ACLs:
+
+- **Production consideration:** SMB access should be restricted to required systems and network segments rather than broadly disabling File and Printer Sharing. Firewall rules and network ACLs should allow TCP/445 only where operationally required.
  
 - **Disable Legacy Protocols:** Permanently deactivate the obsolete and vulnerable SMBv1 protocol across the entire infrastructure:
  
-  Set-SmbServerConfiguration -EnableSMB1Protocol \$false -Force
-  
-- **Enforce Kerberos & Restrict NTLM:** Transition local network authentication away from legacy NTLM (which is highly vulnerable to spraying and relaying) toward Kerberos. Implement Restrict NTLM policies via Group Policy (GPO).
+  **Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force**
 
-- **Account Lockout Policies:** Configure robust Account Lockout Thresholds and duration settings to mitigate rapid, vertical brute-force variants without causing massive denial-of-service states across the organization.
+- **Account Lockout Policies:** Configure account lockout policies according to organizational security requirements and monitor high-volume repeated authentication failures against privileged accounts.
+
+- **Privileged Account Protection:** Review and rename default administrative accounts where appropriate, and ensure privileged accounts follow strong authentication and password policies.
+
+- **Monitoring:** Configure Microsoft Sentinel analytics rules to detect high-volume NTLM authentication failures from a single source IP and tune thresholds against the organization's normal baseline.
+
 
 ---
 
 
 ## Conclusion
 
-The laboratory exercise successfully demonstrated the detection and investigation of an NTLM SMB Password Spray.
+The laboratory exercise successfully demonstrated the detection and investigation of an NTLM SMB password spray.
 
 The detection identified a single source IP generating failed network logons against multiple distinct accounts within a very short time period. Raw Event ID 4625 telemetry confirmed the authentication pattern, while the source-IP and targeted-account analysis established the spray behavior.
 
-Additional authentication noise was also observed from a separate source IP. Because the noise targeted only one account and did not meet the distinct-account threshold, it did not satisfy the Password Spray detection condition.
+Additional authentication noise was also observed from a separate source IP. Because the noise targeted only one account and did not meet the distinct-account threshold, it did not satisfy the password spray detection condition.
 
 A subsequent Event ID 4624 query found no successful network authentication from the identified spray source during the investigation window. Therefore, no successful compromise was observed in the available telemetry.
 
@@ -397,7 +403,7 @@ The investigation demonstrates the importance of correlating failed authenticati
 
 ## Lessons Learned
 
-- **Granular Log Analysis:** Windows Security `EventID 4625` combined with `LogonType 3` provides precise visibility into unauthorized remote network authentication attempts (SMB, WMI, PowerShell Remoting).
+- **Granular Log Analysis:** Windows Security `EventID 4625` combined with `LogonType 3` provides visibility into failed network authentication attempts, including activity associated with SMB and other network-based authentication scenarios.
 - **SubStatus Codes Matter:** Inspecting low-level SubStatus codes allows analysts to differentiate between a blind dictionary attack targeting non-existent accounts (`0xc0000064`) and targeted guessing against valid corporate names (`0xc000006a`).
 - **Logon Type Distinction:** `LogonType 3` represents a network logon and is commonly associated with services such as SMB, WMI, and WinRM. `LogonType 10` represents a RemoteInteractive logon, typically associated with RDP.
 - **Dcount Optimization:** Relying on unique account counts (`dcount(TargetUserName)`) rather than raw event volume is the most effective way to detect horizontal password spraying while suppressing vertical baseline noise.
