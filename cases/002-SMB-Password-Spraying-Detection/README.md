@@ -81,7 +81,7 @@ The analytics rule monitors Windows Security Logs (`SecurityEvent`) for:
 - **AuthenticationPackageName**: NTLM
 - High-velocity failure attempts from a single source IP address across multiple distinct user accounts.
 
-In this case, Logon Type 3 represents network logon activity and, in this case, the observed authentication attempts were associated with SMB network access.
+In this case, Logon Type 3 represents network logon activity and, the observed authentication attempts were associated with SMB network access.
 
 
 ![17-analytics-rule.png](./screenshots/17-analytics-rule.png)
@@ -101,7 +101,7 @@ In this case, Logon Type 3 represents network logon activity and, in this case, 
 | Execution Tool | CrackMapExec |
 | Attack Type | Password Spraying |
 | Test Strategy | Testing a single popular password against multiple accounts |
-|Account and passwords list | one password → many accounts pattern |
+| Account and passwords list | one password → many accounts pattern |
 
 ### Controlled SMB Password Spray:
 **bash**
@@ -119,7 +119,7 @@ crackmapexec smb 10.0.0.4 -u /tmp/users.txt -p 'Summer2026!'
 
 | Field | Value |
 |-|-|
-| Alert |SMB Password SMB Password Spray Detection — NTLM Failed Logons |
+| Alert | SMB Password Spray Detection — NTLM Failed Logons |
 | Severity | Medium |
 | Source | Microsoft Sentinel |
 | Host | CORP-WS-001 |
@@ -157,7 +157,7 @@ Host:  `CORP-WS-001`
 ### Step 3 — Process Analysis 
 ### SOC Analyst Triage:General overview of logs for one day (where EventID == 4625 and AuthenticationPackageName has "NTLM")
 
-Purpose: Before focusing exclusively on the current Password Spray incident, I review the broader NTLM authentication-failure activity observed on the affected host during the previous 24 hours. The goal is to distinguish the current laboratory attack from unrelated historical authentication activity.
+Purpose: Before focusing exclusively on the current password spray incident, I review the broader NTLM authentication-failure activity observed on the affected host during the previous 24 hours. The goal is to distinguish the current laboratory attack from unrelated historical authentication activity.
 
 [03-General-overview-of-logs-for-one-day.kql](./queries/03-General-overview-of-logs-for-one-day.kql)
 ![13-global-infrastructure-context.png](./screenshots/13-global-infrastructure-context.png)
@@ -175,7 +175,7 @@ UniqueIPs: 2
 **FailureReasons:** ["0x80090308"] (SEC_E_INVALID_TOKEN): The security token supplied during authentication was invalid or could not be processed.
 
  
-The value 59 represents all matching NTLM authentication failures observed on CORP-WS-001 during the one-day investigation window. As seen in incident page only 10 failed attempts linked to this case.The remaining majority of the failed attempts occurred before the incident was triggered, due to multiple simulated attack attempts executed for tuning a correct detection rule.
+The value 59 represents all matching NTLM authentication failures observed on CORP-WS-001 during the one-day investigation window. As seen in incident page only 10 failed attempts linked to this case. The remaining majority of the failed attempts occurred before the incident was triggered, due to multiple simulated attack attempts executed for tuning a correct detection rule.
 
 ### Step 4 - More detailed analysis to detect unique IPs 2:
 
@@ -221,7 +221,7 @@ SubStatus context:
 
 **Source 2** — (Additional Authentication Noise)**
 
-The second source `(REDACTED_PUBLIC_I)`) generated two failed authentication attempts against the same azureuser account:
+The second source `(REDACTED_PUBLIC_IP)`) generated two failed authentication attempts against the same azureuser account:
 
 - **Source IP:** `(REDACTED_PUBLIC_I)`
 - **Target Host:** `CORP-WS-001`
@@ -290,7 +290,7 @@ If a successful `4624` event is detected in a production environment, immediatel
 |---|---|
 | Password Spraying | Confirmed (10 Accounts targeted) |
 | High-Velocity Automation Signature | Confirmed |
-| Target User accounts | Identified (`Administrator`, `guest`, etc. |
+| Target User accounts | Identified (`Administrator`, `guest`, etc.) |
 | Successful Network Authentication (`4624`) | Not Observed |
 | Lateral Movement Attempt | Not Observed |
 
@@ -369,7 +369,7 @@ Implement proactive security enhancements to reduce the attack surface against r
 
 - **Multi-Factor Authentication (MFA):** Enforce MFA across all user accounts and require stronger, phishing-resistant authentication methods for privileged and high-value accounts where supported.
 
-- **Network-Level Hardening:** Restrict inbound SMB traffic (TCP port `445`) to trusted systems and required administrative management subnets using Windows Firewall and network ACLs:
+- **Network-Level Hardening:** Restrict inbound SMB traffic (TCP port `445`) to trusted systems and required administrative management subnets using Windows Firewall and network ACLs.
 
 - **Production consideration:** SMB access should be restricted to required systems and network segments rather than broadly disabling File and Printer Sharing. Firewall rules and network ACLs should allow TCP/445 only where operationally required.
  
