@@ -1,0 +1,15 @@
+SecurityEvent
+| where TimeGenerated > ago(15m)
+| where Computer == "CORP-WS-001"
+| where EventID in (4624, 4625)
+| where LogonType == 3
+| extend SourceIP = IpAddress
+| extend User = extract(@"\\([^\\]+)$", 1, Account)
+| summarize
+    Failures = countif(EventID == 4625),
+    Successes = countif(EventID == 4624),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by SourceIP, User
+| where Failures >= 4
+| where Successes >= 1
