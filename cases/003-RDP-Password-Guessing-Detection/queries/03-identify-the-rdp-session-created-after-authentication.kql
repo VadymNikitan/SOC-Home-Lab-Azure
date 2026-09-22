@@ -1,0 +1,15 @@
+SecurityEvent
+| where TimeGenerated between (
+    datetime(2026-09-17T18:33:50Z) .. datetime(2026-09-17T18:34:05Z)
+)
+| where Computer == "CORP-WS-001"
+| where EventID in (4624, 4634, 4672)
+| project
+    TimeGenerated,
+    EventID,
+    LogonType,
+    Account,
+    IpAddress,
+    TargetLogonId,
+    SubjectLogonId
+| order by TimeGenerated asc
