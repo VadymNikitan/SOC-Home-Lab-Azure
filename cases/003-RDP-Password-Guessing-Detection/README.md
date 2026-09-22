@@ -429,26 +429,6 @@ The investigation focused on validating the authentication sequence, identifying
 
 The following query was used to retrieve the authentication events generated during the attack window:
 
-```kusto
-SecurityEvent
-| where TimeGenerated between (
-    datetime(2026-09-17T18:30:00Z) .. datetime(2026-09-17T18:36:00Z)
-)
-| where Computer == "CORP-WS-001"
-| where EventID in (4624, 4625)
-| where LogonType == 3
-| extend SourceIP = IpAddress
-| extend User = extract(@"\\([^\\]+)$", 1, Account)
-| project
-    TimeGenerated,
-    EventID,
-    LogonType,
-    User,
-    SourceIP,
-    WorkstationName,
-    AuthenticationPackageName
-| order by TimeGenerated asc
-```
 [02-Reconstruct-the-Authentication-Sequence.kql](./queries/02-Reconstruct-the-Authentication-Sequence.kql)
 
 
@@ -473,43 +453,11 @@ The failed attempts occurred over approximately **8.25 seconds**, followed by th
 
 The next query was used to examine the events immediately surrounding the successful authentication:
 
-```kusto
-SecurityEvent
-| where TimeGenerated between (
-    datetime(2026-09-17T18:33:50Z) .. datetime(2026-09-17T18:34:05Z)
-)
-| where Computer == "CORP-WS-001"
-| where EventID in (4624, 4634, 4672)
-| project
-    TimeGenerated,
-    EventID,
-    LogonType,
-    Account,
-    IpAddress,
-    TargetLogonId,
-    SubjectLogonId
-| order by TimeGenerated asc
-```
+[03-identify-the-rdp-session-created-after-authentication.kql](./queries/03-identify-the-rdp-session-created-after-authentication.kql)
 
-The relevant sequence was:
 
-| UTC          |  Event | Logon Type | Interpretation                                                  |
-| ------------ | -----: | ---------: | --------------------------------------------------------------- |
-| 18:33:57.569 | `4624` |        `3` | Successful network authentication for `Ragnar` from `10.0.1.11` |
-| 18:33:58.536 | `4624` |       `10` | Successful interactive RDP logon                                |
-| 18:33:59.396 | `4634` |       `10` | RDP session terminated                                          |
+![09-identify-the-rdp-session-created-after-authentication.png](./screenshots/09-identify-the-rdp-session-created-after-authentication.png)
 
-The resulting sequence was:
-
-```text
-4625 Type 3 × 5
-        ↓
-4624 Type 3
-        ↓
-4624 Type 10
-        ↓
-4634 Type 10
-```
 
 The `4624 / Logon Type 10` event confirms that an interactive RDP session was established after the successful authentication.
 
@@ -523,25 +471,10 @@ The interactive RDP session lasted approximately:
 
 To determine whether additional successful authentications for the same account and source IP occurred during the investigation window:
 
-```kusto
-SecurityEvent
-| where TimeGenerated between (
-    datetime(2026-09-17T18:30:00Z) .. datetime(2026-09-17T19:00:00Z)
-)
-| where Computer == "CORP-WS-001"
-| where EventID == 4624
-| where Account contains "Ragnar"
-| where IpAddress == "10.0.1.11"
-| project
-    TimeGenerated,
-    EventID,
-    LogonType,
-    Account,
-    IpAddress,
-    WorkstationName,
-    LogonId
-| order by TimeGenerated asc
-```
+[04-successful-logons.kql](./queries/04-successful-logons.kql)
+
+
+![10-successful-logons.png](./screenshots/10-successful-logons.png)
 
 Exactly two successful `4624` events were identified for `Ragnar` from `10.0.1.11` during the `18:30–19:00 UTC` window:
 
@@ -550,65 +483,20 @@ Exactly two successful `4624` events were identified for `Ragnar` from `10.0.1.1
 
 No additional successful `4624` authentication events for this account/source pair were observed in the specified window.
 
-### Step 4 — Check Post-Authentication Activity
 
-The following query was used to review security events generated after the successful authentication:
-
-```kusto
-SecurityEvent
-| where TimeGenerated between (
-    datetime(2026-09-17T18:33:57Z) .. datetime(2026-09-17T19:00:00Z)
-)
-| where Computer == "CORP-WS-001"
-| project
-    TimeGenerated,
-    EventID,
-    Activity,
-    Account,
-    LogonType,
-    IpAddress,
-    ProcessName,
-    CommandLine
-| order by TimeGenerated asc
-```
-
-The investigation specifically considered:
-
-* `4688` — process creation;
-* `4672` — special privileges assigned to a new logon;
-* `4634` / `4647` — session/logoff events;
-* other security events potentially indicating command execution or system modification.
-
-### Step 5 — Check Process Creation
+### Step 4 — Check Process Creation
 
 Because process creation is particularly relevant when determining whether the authenticated session was used to execute commands, Event ID `4688` was queried separately:
 
-```kusto
-SecurityEvent
-| where TimeGenerated between (
-    datetime(2026-09-17T18:33:57Z) .. datetime(2026-09-17T18:45:00Z)
-)
-| where Computer == "CORP-WS-001"
-| where EventID == 4688
-| project
-    TimeGenerated,
-    Account,
-    NewProcessName,
-    Process,
-    CommandLine,
-    ParentProcessName
-| order by TimeGenerated asc
-```
+[05-check-process-creation.kql](./queries/05-check-process-creation.kql)
+
+
+![11-check-process-creation.png](./screenshots/11-check-process-creation.png)
+
+
 
 No `4688` process-creation events were observed in the available `SecurityEvent` telemetry during the investigated period.
 
-Therefore, there is no available Security Event evidence showing execution of a process or command after the successful RDP authentication.
-
-> **Telemetry limitation:** Absence of Event ID `4688` in `SecurityEvent` does not prove that no process was executed. It means that no corresponding process-creation event was available in the telemetry collected for this investigation.
-
-### Step 6 — Review Events Generated During Session Creation
-
-Additional events were observed immediately after the successful authentication.
 
 #### Event ID 4648 — Explicit Credentials
 
@@ -634,30 +522,11 @@ There is no evidence in the available telemetry that the user manually executed 
 
 Therefore, these events are treated as **system/session initialization activity**, not as evidence of post-authentication attacker activity.
 
-### Step 7 — Check Account and Group Modification
+### Step 5 — Check Account and Group Modification
 
 The following query was used to identify account and group manipulation after the successful authentication:
 
-```kusto
-SecurityEvent
-| where TimeGenerated between (
-    datetime(2026-09-17T18:33:57Z) .. datetime(2026-09-17T19:00:00Z)
-)
-| where Computer == "CORP-WS-001"
-| where EventID in (
-    4720, 4722, 4724, 4725, 4726,
-    4728, 4729, 4732, 4733, 4738,
-    4740
-)
-| project
-    TimeGenerated,
-    EventID,
-    Activity,
-    Account,
-    TargetAccount,
-    IpAddress
-| order by TimeGenerated asc
-```
+[05-check-process-creation.kql](./queries/05-check-process-creation.kql)
 
 No account or group modification events were observed in the investigated window.
 
@@ -671,54 +540,24 @@ The following potentially relevant operations were therefore not observed:
 * account modification;
 * account lockout.
 
-### Step 8 — Check Persistence Through Services and Scheduled Tasks
+### Step 6 — Check Persistence Through Services and Scheduled Tasks
 
 Potential persistence mechanisms involving services and scheduled tasks were also checked:
 
-```kusto
-SecurityEvent
-| where TimeGenerated between (
-    datetime(2026-09-17T18:33:57Z) .. datetime(2026-09-17T19:00:00Z)
-)
-| where Computer == "CORP-WS-001"
-| where EventID in (
-    4697, 4698, 4699, 4700, 4701, 4702
-)
-| project
-    TimeGenerated,
-    EventID,
-    Activity,
-    Account,
-    IpAddress
-| order by TimeGenerated asc
-```
+[06-check-persistence-through-services-and-scheduled-tasks.kql](./queries/06-check-persistence-through-services-and-scheduled-tasks.kql)
 
 No events associated with service installation or scheduled-task creation/modification were observed in the available telemetry.
 
 This means that no evidence of persistence through the queried Windows service or Scheduled Task event IDs was identified during the investigation window.
 
-### Step 9 — Verify Session Termination
+### Step 7 — Verify Session Termination
 
 The final authentication/session query was used to confirm how the RDP session ended:
 
-```kusto
-SecurityEvent
-| where TimeGenerated between (
-    datetime(2026-09-17T18:33:57Z) .. datetime(2026-09-17T19:00:00Z)
-)
-| where Computer == "CORP-WS-001"
-| where EventID in (4624, 4634)
-| where Account contains "Ragnar"
-| project
-    TimeGenerated,
-    EventID,
-    LogonType,
-    Account,
-    IpAddress,
-    WorkstationName,
-    LogonId
-| order by TimeGenerated asc
-```
+[07-verify-session-termination.kql](./queries/07-verify-session-termination.kqll)
+
+
+![12-verify-session-termination.png](./screenshots/12-verify-session-termination.png)
 
 The final session sequence was:
 
