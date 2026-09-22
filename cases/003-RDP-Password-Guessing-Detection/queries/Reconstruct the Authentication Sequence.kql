@@ -1,0 +1,18 @@
+SecurityEvent
+| where TimeGenerated between (
+    datetime(2026-09-17T18:30:00Z) .. datetime(2026-09-17T18:36:00Z)
+)
+| where Computer == "CORP-WS-001"
+| where EventID in (4624, 4625)
+| where LogonType == 3
+| extend SourceIP = IpAddress
+| extend User = extract(@"\\([^\\]+)$", 1, Account)
+| project
+    TimeGenerated,
+    EventID,
+    LogonType,
+    User,
+    SourceIP,
+    WorkstationName,
+    AuthenticationPackageName
+| order by TimeGenerated asc
