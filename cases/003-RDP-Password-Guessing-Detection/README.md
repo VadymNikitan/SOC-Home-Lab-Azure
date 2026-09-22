@@ -277,63 +277,16 @@ The successful RDP connection served as the final service and authentication val
 
 The target was therefore confirmed to be correctly configured and reachable over RDP before the authentication attack simulation was executed.
 
+
 ## Creation of a Custom Atomic Test
 
 The RDP password-guessing simulation was implemented as a custom Atomic-style test mapped to MITRE ATT&CK technique `T1110.001 — Brute Force: Password Guessing`.
 
-The test definition is stored separately in the repository:
-
-```text
-atomic/T1110.001-rdp-password-guessing.yml
-```
-
-### Test Details
-
-| Parameter      | Value                                        |
-| -------------- | -------------------------------------------- |
-| Technique      | `T1110.001 — Brute Force: Password Guessing` |
-| Test Name      | `RDP Password Guessing via xfreerdp`         |
-| Test Type      | Custom Atomic-style test                     |
-| Execution Host | `Aktep-02` — Kali Linux (`10.0.1.11`)        |
-| Target         | `CORP-WS-001` — Windows 11 Pro (`10.0.1.10`) |
-| Service        | RDP / TCP `3389`                             |
-| Target Account | `Ragnar`                                     |
-| Executor       | Bash                                         |
-| Tool           | `xfreerdp`                                   |
-
-> **Note:** This is a custom Atomic-style test created for the SOC lab. It is not an official upstream Atomic Red Team test.
-
-### Test Description
-
-The test simulates password guessing against an authorized RDP endpoint from a Linux-based attacker host.
-
-The test uses `xfreerdp` to perform sequential authentication attempts with intentionally invalid passwords. The objective is to generate Windows Security Event ID `4625` events and validate their ingestion into Microsoft Sentinel through Azure Monitor Agent and the `SecurityEvent` table.
-
-### Repository Structure
-
-```text
-Case-004-RDP-Password-Guessing/
-├── README.md
-├── atomic/
-│   └── T1110.001-rdp-password-guessing.yml
-└── screenshots/
-    ├── 01-analytics-rule.png
-    ├── 02-rdp-password-guessing.png
-    ├── 03-rdp-session-established.png
-    ├── 04-fresh-4625-securityevent.png
-    ├── 05-sentinel-incident.png
-    └── 06-authentication-timeline.png
-```
-
-### Custom Atomic Test Definition
-
-The complete YAML definition is maintained in:
-
-```text
 [T1110.001-rdp-password-guessing.yml](./cases/003-RDP-Password-Guessing-Detection/atomic/T1110.001-rdp-password-guessing.yml)
-```
 
 The test accepts the target IP address and username as input arguments and executes five sequential authentication attempts using intentionally invalid passwords.
+
+
 
 ### Execution Command
 
