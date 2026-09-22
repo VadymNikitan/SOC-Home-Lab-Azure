@@ -282,7 +282,7 @@ The target was therefore confirmed to be correctly configured and reachable over
 
 The RDP password-guessing simulation was implemented as a custom Atomic-style test mapped to MITRE ATT&CK technique `T1110.001 — Brute Force: Password Guessing`.
 
-[T1110.001-rdp-password-guessing.yml](./cases/003-RDP-Password-Guessing-Detection/atomic/T1110.001-rdp-password-guessing.yml)
+[T1110.001-rdp-password-guessing.yml](./atomic/T1110.001-rdp-password-guessing.yml)
 
 The test accepts the target IP address and username as input arguments and executes five sequential authentication attempts using intentionally invalid passwords.
 
