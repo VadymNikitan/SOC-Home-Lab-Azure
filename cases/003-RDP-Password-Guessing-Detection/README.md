@@ -130,4 +130,154 @@ Therefore, the Sentinel incident's correlation timestamps should not be interpre
 - Check for service and scheduled-task persistence
 - Document telemetry limitations and investigation findings
 
+## Lab Preparation and RDP Validation
+
+Before generating the authentication attack sequence, the RDP service and network connectivity were validated from both the Windows target and the authorized Kali Linux attacker host.
+
+The validation was performed in the following order:
+
+1. Verify Remote Desktop Services
+2. Verify that RDP is enabled
+3. Verify Windows Firewall configuration
+4. Test RDP connectivity from the current attacker VM
+5. Verify TCP/3389 connectivity using Nmap
+6. Establish a legitimate RDP session using `xfreerdp`
+
+---
+
+### Step 1 — Verify Remote Desktop Services
+
+The Windows Remote Desktop Services service was checked using:
+
+```cmd
+sc query TermService
+```
+
+#### Observed State
+
+```text
+STATE              : 4  RUNNING
+```
+
+`TermService` is the Windows Remote Desktop Services service responsible for handling incoming RDP connections.
+
+This confirms that the RDP service is running on the target endpoint.
+
+---
+
+### Step 2 — Verify RDP Is Enabled
+
+The Windows Terminal Services configuration was checked using:
+
+```cmd
+reg query "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections
+```
+
+#### Observed Result
+
+```text
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server
+    fDenyTSConnections    REG_DWORD    0x0
+```
+
+A value of `0x0` indicates that RDP connections are permitted by the Windows Terminal Services configuration.
+
+This confirms that Remote Desktop is enabled at the operating system level.
+
+---
+
+### Step 3 — Verify Windows Firewall
+
+The Windows Defender Firewall Remote Desktop rules were inspected using PowerShell:
+
+```powershell
+Get-NetFirewallRule -DisplayGroup "Remote Desktop"
+```
+
+The relevant inbound TCP rule was observed as enabled:
+
+```text
+RemoteDesktop-UserMode-In-TCP
+Enabled: True
+Direction: Inbound
+Action: Allow
+Protocol: TCP
+Port: 3389
+```
+![01-verify-windows-firewall.png](./screenshots/01-verify-windows-firewall.png)
+
+This confirms that the Windows Firewall configuration permits inbound RDP traffic on TCP/3389.
+
+---
+
+### Step 4 — Verify TCP/3389 Connectivity from Kali
+
+The first network-level validation against the Windows target was performed from the Kali Linux attacker host.
+
+#### Install Nmap
+
+```bash
+sudo apt update && sudo apt install -y nmap
+```
+
+#### Port Scan
+
+```bash
+nmap -Pn -p 3389 10.0.1.10
+```
+
+#### Observed Result
+
+```text
+PORT     STATE SERVICE
+3389/tcp open  ms-wbt-server
+```
+![02-verify-tcp3389-connectivity.png](./screenshots/02-verify-tcp3389-connectivity.png)
+
+The result confirms that TCP/3389 is reachable on `CORP-WS-001` and that the target is exposing the Microsoft RDP service.
+
+---
+
+### Step 5 — Establish a Legitimate RDP Session
+
+After TCP/3389 connectivity was confirmed, the RDP client was launched from the Kali graphical environment.
+
+#### Install FreeRDP
+
+```bash
+sudo apt update && sudo apt install -y freerdp3-x11
+```
+
+#### RDP Connection
+
+```bash
+xfreerdp /v:10.0.1.10 /u:Ragnar
+```
+
+The valid password for the authorized `Ragnar` account was used to establish a legitimate RDP session.
+
+The successful RDP connection served as the final service and authentication validation before generating the controlled password-guessing sequence.
+
+![03-rdp-connection.png](./screenshots/03-rdp-connection.png)
+
+---
+
+### Validation Summary
+
+| Validation                               | Result           |
+| ---------------------------------------- | ---------------- |
+| Remote Desktop Services (`TermService`)  | Running          |
+| RDP configuration (`fDenyTSConnections`) | Enabled          |
+| Windows Firewall                         | TCP/3389 allowed |
+| Target IP                                | `10.0.1.10`      |
+| RDP Port                                 | `3389/tcp`       |
+| RDP Service                              | `ms-wbt-server`  |
+| Legitimate RDP Session                   | Successful       |
+| Target Account                           | `Ragnar`         |
+
+The target was therefore confirmed to be correctly configured and reachable over RDP before the authentication attack simulation was executed.
+
+
+
+
 
