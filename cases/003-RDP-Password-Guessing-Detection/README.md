@@ -449,6 +449,10 @@ SecurityEvent
     AuthenticationPackageName
 | order by TimeGenerated asc
 ```
+[02-Reconstruct-the-Authentication-Sequence.kql](./queries/02-Reconstruct-the-Authentication-Sequence.kql)
+
+
+![08-Reconstruct-the-Authentication-Sequence.png](./screenshots/08-Reconstruct-the-Authentication-Sequence.png)
 
 ### Observed Authentication Events
 
