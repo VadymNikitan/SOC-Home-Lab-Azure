@@ -1,4 +1,4 @@
-# Case 004: RDP Password Guessing Detection — Failed Logons Followed by Successful Authentication
+# Case 003: RDP Password Guessing Detection — Failed Logons Followed by Successful Authentication
 ---
 
 ## Scenario
@@ -377,6 +377,403 @@ The rule performs the following correlation:
 8. Counts successful authentication events (`4624`).
 9. Records the first and last observed timestamps.
 10. Generates a result when at least `4` failed attempts and `1` successful authentication are observed within the 15-minute query window.
+
+## Attack Simulation
+
+| Item                    | Value                                                             |
+| ----------------------- | ----------------------------------------------------------------- |
+| Target Service          | RDP (Remote Desktop Protocol)                                     |
+| Execution Tool          | `xfreerdp`                                                        |
+| Attack Type             | Password Guessing                                                 |
+| MITRE ATT&CK            | `T1110.001 — Brute Force: Password Guessing`                      |
+| Execution Host          | `Aktep-02` — Kali Linux (`10.0.1.11`)                             |
+| Target Host             | `CORP-WS-001` — Windows 11 Pro (`10.0.1.10`)                      |
+| Target Account          | `Ragnar`                                                          |
+| Test Strategy           | Multiple intentionally invalid passwords against a single account |
+| Attack Pattern          | one account → multiple passwords                                  |
+| Authentication Protocol | NTLM                                                              |
+| Target Port             | TCP `3389`                                                        |
+
+### Controlled RDP Password Guessing
+
+The attack simulation was performed from `Aktep-02` against the authorized RDP service on `CORP-WS-001`.
+
+Five intentionally invalid passwords were submitted sequentially against the `Ragnar` account:
+
+```bash
+for pass in "111111111111" "2222222222222" "333333333333" "444444444444" "555555555555"; do
+  echo "[T1110.001] Attempting RDP authentication with password: $pass"
+  xfreerdp /v:10.0.1.10 /u:Ragnar /p:"$pass" /cert:ignore /timeout:5000
+  sleep 2
+done
+```
+
+Manual Successful Authentication
+
+After the five failed password-guessing attempts, a successful RDP authentication was performed manually by the lab operator using the valid credentials for the authorized Ragnar account.
+
+---
+
+## Incident 
+
+![05-incident.png](./screenshots/05-incident.png)
+![06-incident.png](./screenshots/06-incident.png)
+![07-incident.png](./screenshots/07-incident.png)
+
+
+## 14. Investigation
+
+The investigation focused on validating the authentication sequence, identifying the successful RDP session, and determining whether any post-authentication activity was visible in the available Microsoft Sentinel telemetry.
+
+### Step 1 — Reconstruct the Authentication Sequence
+
+The following query was used to retrieve the authentication events generated during the attack window:
+
+```kusto
+SecurityEvent
+| where TimeGenerated between (
+    datetime(2026-09-17T18:30:00Z) .. datetime(2026-09-17T18:36:00Z)
+)
+| where Computer == "CORP-WS-001"
+| where EventID in (4624, 4625)
+| where LogonType == 3
+| extend SourceIP = IpAddress
+| extend User = extract(@"\\([^\\]+)$", 1, Account)
+| project
+    TimeGenerated,
+    EventID,
+    LogonType,
+    User,
+    SourceIP,
+    WorkstationName,
+    AuthenticationPackageName
+| order by TimeGenerated asc
+```
+
+### Observed Authentication Events
+
+| UTC          |  Event | Type | User     | Source      |
+| ------------ | -----: | ---: | -------- | ----------- |
+| 18:33:11.257 | `4625` |  `3` | `Ragnar` | `10.0.1.11` |
+| 18:33:13.319 | `4625` |  `3` | `Ragnar` | `10.0.1.11` |
+| 18:33:15.381 | `4625` |  `3` | `Ragnar` | `10.0.1.11` |
+| 18:33:17.444 | `4625` |  `3` | `Ragnar` | `10.0.1.11` |
+| 18:33:19.510 | `4625` |  `3` | `Ragnar` | `10.0.1.11` |
+| 18:33:57.569 | `4624` |  `3` | `Ragnar` | `10.0.1.11` |
+
+The events establish five consecutive failed network authentication attempts followed by a successful network authentication from the same source IP and account.
+
+The failed attempts occurred over approximately **8.25 seconds**, followed by the successful authentication approximately **38.06 seconds** after the first failed attempt.
+
+### Step 2 — Identify the RDP Session Created After Authentication
+
+The next query was used to examine the events immediately surrounding the successful authentication:
+
+```kusto
+SecurityEvent
+| where TimeGenerated between (
+    datetime(2026-09-17T18:33:50Z) .. datetime(2026-09-17T18:34:05Z)
+)
+| where Computer == "CORP-WS-001"
+| where EventID in (4624, 4634, 4672)
+| project
+    TimeGenerated,
+    EventID,
+    LogonType,
+    Account,
+    IpAddress,
+    TargetLogonId,
+    SubjectLogonId
+| order by TimeGenerated asc
+```
+
+The relevant sequence was:
+
+| UTC          |  Event | Logon Type | Interpretation                                                  |
+| ------------ | -----: | ---------: | --------------------------------------------------------------- |
+| 18:33:57.569 | `4624` |        `3` | Successful network authentication for `Ragnar` from `10.0.1.11` |
+| 18:33:58.536 | `4624` |       `10` | Successful interactive RDP logon                                |
+| 18:33:59.396 | `4634` |       `10` | RDP session terminated                                          |
+
+The resulting sequence was:
+
+```text
+4625 Type 3 × 5
+        ↓
+4624 Type 3
+        ↓
+4624 Type 10
+        ↓
+4634 Type 10
+```
+
+The `4624 / Logon Type 10` event confirms that an interactive RDP session was established after the successful authentication.
+
+The interactive RDP session lasted approximately:
+
+```text
+18:33:59.396 - 18:33:58.536 ≈ 0.86 seconds
+```
+
+### Step 3 — Check for Other Successful Logons
+
+To determine whether additional successful authentications for the same account and source IP occurred during the investigation window:
+
+```kusto
+SecurityEvent
+| where TimeGenerated between (
+    datetime(2026-09-17T18:30:00Z) .. datetime(2026-09-17T19:00:00Z)
+)
+| where Computer == "CORP-WS-001"
+| where EventID == 4624
+| where Account contains "Ragnar"
+| where IpAddress == "10.0.1.11"
+| project
+    TimeGenerated,
+    EventID,
+    LogonType,
+    Account,
+    IpAddress,
+    WorkstationName,
+    LogonId
+| order by TimeGenerated asc
+```
+
+Exactly two successful `4624` events were identified for `Ragnar` from `10.0.1.11` during the `18:30–19:00 UTC` window:
+
+1. `18:33:57.569` — `4624 / Logon Type 3`
+2. `18:33:58.536` — `4624 / Logon Type 10`
+
+No additional successful `4624` authentication events for this account/source pair were observed in the specified window.
+
+### Step 4 — Check Post-Authentication Activity
+
+The following query was used to review security events generated after the successful authentication:
+
+```kusto
+SecurityEvent
+| where TimeGenerated between (
+    datetime(2026-09-17T18:33:57Z) .. datetime(2026-09-17T19:00:00Z)
+)
+| where Computer == "CORP-WS-001"
+| project
+    TimeGenerated,
+    EventID,
+    Activity,
+    Account,
+    LogonType,
+    IpAddress,
+    ProcessName,
+    CommandLine
+| order by TimeGenerated asc
+```
+
+The investigation specifically considered:
+
+* `4688` — process creation;
+* `4672` — special privileges assigned to a new logon;
+* `4634` / `4647` — session/logoff events;
+* other security events potentially indicating command execution or system modification.
+
+### Step 5 — Check Process Creation
+
+Because process creation is particularly relevant when determining whether the authenticated session was used to execute commands, Event ID `4688` was queried separately:
+
+```kusto
+SecurityEvent
+| where TimeGenerated between (
+    datetime(2026-09-17T18:33:57Z) .. datetime(2026-09-17T18:45:00Z)
+)
+| where Computer == "CORP-WS-001"
+| where EventID == 4688
+| project
+    TimeGenerated,
+    Account,
+    NewProcessName,
+    Process,
+    CommandLine,
+    ParentProcessName
+| order by TimeGenerated asc
+```
+
+No `4688` process-creation events were observed in the available `SecurityEvent` telemetry during the investigated period.
+
+Therefore, there is no available Security Event evidence showing execution of a process or command after the successful RDP authentication.
+
+> **Telemetry limitation:** Absence of Event ID `4688` in `SecurityEvent` does not prove that no process was executed. It means that no corresponding process-creation event was available in the telemetry collected for this investigation.
+
+### Step 6 — Review Events Generated During Session Creation
+
+Additional events were observed immediately after the successful authentication.
+
+#### Event ID 4648 — Explicit Credentials
+
+Event ID `4648` was observed at approximately the same time as the RDP session creation.
+
+The event referenced the computer account:
+
+```text
+WORKGROUP\CORP-WS-001$
+```
+
+and occurred in the context of Windows system components involved in session establishment.
+
+This event should not be interpreted as evidence that the authenticated user manually executed a command using explicit credentials.
+
+#### Event ID 4798 — Local Group Membership Enumeration
+
+Event ID `4798` was also observed during the RDP session establishment sequence.
+
+The events occurred immediately after authentication and were associated with Windows session initialization.
+
+There is no evidence in the available telemetry that the user manually executed a command such as `net localgroup` to generate these events.
+
+Therefore, these events are treated as **system/session initialization activity**, not as evidence of post-authentication attacker activity.
+
+### Step 7 — Check Account and Group Modification
+
+The following query was used to identify account and group manipulation after the successful authentication:
+
+```kusto
+SecurityEvent
+| where TimeGenerated between (
+    datetime(2026-09-17T18:33:57Z) .. datetime(2026-09-17T19:00:00Z)
+)
+| where Computer == "CORP-WS-001"
+| where EventID in (
+    4720, 4722, 4724, 4725, 4726,
+    4728, 4729, 4732, 4733, 4738,
+    4740
+)
+| project
+    TimeGenerated,
+    EventID,
+    Activity,
+    Account,
+    TargetAccount,
+    IpAddress
+| order by TimeGenerated asc
+```
+
+No account or group modification events were observed in the investigated window.
+
+The following potentially relevant operations were therefore not observed:
+
+* account creation;
+* account enable/disable;
+* password reset;
+* account deletion;
+* addition/removal from security groups;
+* account modification;
+* account lockout.
+
+### Step 8 — Check Persistence Through Services and Scheduled Tasks
+
+Potential persistence mechanisms involving services and scheduled tasks were also checked:
+
+```kusto
+SecurityEvent
+| where TimeGenerated between (
+    datetime(2026-09-17T18:33:57Z) .. datetime(2026-09-17T19:00:00Z)
+)
+| where Computer == "CORP-WS-001"
+| where EventID in (
+    4697, 4698, 4699, 4700, 4701, 4702
+)
+| project
+    TimeGenerated,
+    EventID,
+    Activity,
+    Account,
+    IpAddress
+| order by TimeGenerated asc
+```
+
+No events associated with service installation or scheduled-task creation/modification were observed in the available telemetry.
+
+This means that no evidence of persistence through the queried Windows service or Scheduled Task event IDs was identified during the investigation window.
+
+### Step 9 — Verify Session Termination
+
+The final authentication/session query was used to confirm how the RDP session ended:
+
+```kusto
+SecurityEvent
+| where TimeGenerated between (
+    datetime(2026-09-17T18:33:57Z) .. datetime(2026-09-17T19:00:00Z)
+)
+| where Computer == "CORP-WS-001"
+| where EventID in (4624, 4634)
+| where Account contains "Ragnar"
+| project
+    TimeGenerated,
+    EventID,
+    LogonType,
+    Account,
+    IpAddress,
+    WorkstationName,
+    LogonId
+| order by TimeGenerated asc
+```
+
+The final session sequence was:
+
+| UTC            |  Event | Logon Type | Interpretation                                     |
+| -------------- | -----: | ---------: | -------------------------------------------------- |
+| `18:33:57.569` | `4624` |        `3` | Successful network authentication from `10.0.1.11` |
+| `18:33:58.536` | `4624` |       `10` | Successful interactive RDP logon                   |
+| `18:33:59.396` | `4634` |       `10` | RDP session terminated                             |
+
+### Investigation Summary
+
+The investigation established the following authentication chain:
+
+```text
+Aktep-02
+10.0.1.11
+     |
+     | RDP / TCP 3389
+     v
+CORP-WS-001
+10.0.1.10
+     |
+     +--> 4625 Type 3 × 5
+     |    Failed authentication
+     |
+     +--> 4624 Type 3
+     |    Successful network authentication
+     |
+     +--> 4624 Type 10
+     |    Interactive RDP logon
+     |
+     +--> 4634 Type 10
+          Session terminated
+```
+
+The complete observed sequence was:
+
+```text
+5 × 4625 Type 3
+        ↓
+4624 Type 3
+        ↓
+4624 Type 10
+        ↓
+4634 Type 10
+```
+
+The five failed authentication attempts were generated by the controlled password-guessing test. The subsequent successful authentication was performed manually by the lab operator using the valid `Ragnar` credentials to validate the complete detection scenario.
+
+No additional successful `4624` events for `Ragnar` from `10.0.1.11` were observed during the `18:30–19:00 UTC` investigation window.
+
+No `4688` process-creation events, account/group modification events, or queried persistence events were observed in the available `SecurityEvent` telemetry after the successful authentication.
+
+The observed `4648` and `4798` events occurred during session establishment and do not, by themselves, demonstrate manual command execution or malicious post-authentication activity.
+
+Overall, the available telemetry supports the conclusion that the laboratory scenario successfully reproduced the intended authentication pattern and that Microsoft Sentinel detected the sequence of multiple failed authentications followed by a successful authentication.
+
+
+
 
 
 
