@@ -277,6 +277,20 @@ The successful RDP connection served as the final service and authentication val
 
 The target was therefore confirmed to be correctly configured and reachable over RDP before the authentication attack simulation was executed.
 
+## Creation wordlist 
+
+nano ~/rdp-passwords.txt
+
+Put:
+111111111111
+2222222222222
+333333333333
+444444444444
+
+Check:
+cat ~/rdp-passwords.txt
+
+
 
 ## Creation of a Custom Atomic Test
 
@@ -316,6 +330,107 @@ The resulting events were ingested into the `SecurityEvent` table and subsequent
 `RDP Multiple Failed Logons Followed by Successful Authentication`
 
 This provided the failed-authentication sequence required to validate the detection logic for `T1110.001`.
+
+
+## Analytics Rule
+
+The Microsoft Sentinel Analytics Rule was designed to detect a laboratory authentication pattern consisting of:
+
+`multiple failed authentication attempts → successful authentication`
+
+The detection correlates authentication events from the same source IP and username within a 15-minute window.
+
+> **Implementation note:** The rule uses Windows `LogonType == 3` events for correlation. In the observed RDP authentication sequence, the failed attempts were recorded as Event ID `4625`, Logon Type `3`, followed by a successful Event ID `4624` Logon Type `3` and then an interactive RDP Event ID `4624` Logon Type `10`. Therefore, the rule detects the authentication sequence preceding and associated with the RDP session rather than relying exclusively on Logon Type `10`.
+
+### Rule Configuration
+
+| Parameter                  | Value                                                                                                                                                       |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Name                       | `RDP Multiple Failed Logons Followed by Successful Authentication`                                                                                          |
+| Description                | Detects multiple failed Windows authentication attempts followed by a successful authentication from the same source IP and user within a 15-minute window. |
+| MITRE ATT&CK               | Credential Access — `T1110.001`                                                                                                                             |
+| Severity                   | High                                                                                                                                                        |
+| Status                     | Enabled                                                                                                                                                     |
+| Target Computer            | `CORP-WS-001`                                                                                                                                               |
+| Minimum Failed Attempts    | `4`                                                                                                                                                         |
+| Required Successful Logons | `1`                                                                                                                                                         |
+| Correlation Window         | `15 minutes`                                                                                                                                                |
+
+### KQL Query
+[01-Detection-Rule.kql](./queries/01-Detection-Rule.kql)
+
+### Analytics Rule Settings
+
+| Setting           | Configuration                                      |
+| ----------------- | -------------------------------------------------- |
+| Rule frequency    | Run query every 5 minutes                          |
+| Rule period       | Last 15 minutes                                    |
+| Rule start time   | Automatic                                          |
+| Rule threshold    | Trigger alert if query returns more than 0 results |
+| Event grouping    | Group all events into a single alert               |
+| Suppression       | Not configured                                     |
+| Incident creation | Enabled                                            |
+| Alert grouping    | Disabled                                           |
+
+### Detection Logic
+
+The rule performs the following correlation:
+
+1. Queries Windows authentication events from `CORP-WS-001`.
+2. Limits the event set to Event IDs `4624` and `4625`.
+3. Limits the correlation to `LogonType == 3`.
+4. Extracts the source IP address from `IpAddress`.
+5. Extracts the username from the `Account` field.
+6. Groups events by source IP and username.
+7. Counts failed authentication events (`4625`).
+8. Counts successful authentication events (`4624`).
+9. Records the first and last observed timestamps.
+10. Generates a result when at least `4` failed attempts and `1` successful authentication are observed within the 15-minute query window.
+
+### Detection Fields
+
+The rule provides the following investigation fields:
+
+* `SourceIP` — source IP address of the authentication attempts.
+* `User` — username associated with the authentication events.
+* `Failures` — number of failed authentication attempts.
+* `Successes` — number of successful authentication events.
+* `FirstSeen` — timestamp of the first correlated event.
+* `LastSeen` — timestamp of the last correlated event.
+
+The target computer is constrained by the query to:
+
+`CORP-WS-001`
+
+### Expected Detection Pattern
+
+For the laboratory test, the expected sequence is:
+
+```text
+4625 × 4 or more
+        ↓
+4624 Type 3
+        ↓
+4624 Type 10
+        ↓
+RDP session
+```
+
+The `4624 Type 10` event is the Windows event representing the interactive RDP logon. It occurs after the successful network authentication used by the analytics rule for correlation.
+
+### Detection Result
+
+During the controlled test, the rule correlated:
+
+* Source IP: `10.0.1.11`
+* Username: `Ragnar`
+* Failed attempts: `5`
+* Successful logons: `1`
+* First observed: `2026-09-17T18:33:11.2572998Z`
+* Last observed: `2026-09-17T18:33:57.5693917Z`
+
+The correlation satisfied the rule threshold and resulted in a Microsoft Sentinel High-severity incident.
+
 
 
 
