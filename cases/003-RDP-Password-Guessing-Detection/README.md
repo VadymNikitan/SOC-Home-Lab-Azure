@@ -356,21 +356,12 @@ The detection correlates authentication events from the same source IP and usern
 | Required Successful Logons | `1`                                                                                                                                                         |
 | Correlation Window         | `15 minutes`                                                                                                                                                |
 
+![04-analytics-rule.png](./screenshots/04-analytics-rule.png)
+
+
 ### KQL Query
 [01-Detection-Rule.kql](./queries/01-Detection-Rule.kql)
-
-### Analytics Rule Settings
-
-| Setting           | Configuration                                      |
-| ----------------- | -------------------------------------------------- |
-| Rule frequency    | Run query every 5 minutes                          |
-| Rule period       | Last 15 minutes                                    |
-| Rule start time   | Automatic                                          |
-| Rule threshold    | Trigger alert if query returns more than 0 results |
-| Event grouping    | Group all events into a single alert               |
-| Suppression       | Not configured                                     |
-| Incident creation | Enabled                                            |
-| Alert grouping    | Disabled                                           |
+                                     |
 
 ### Detection Logic
 
@@ -387,49 +378,7 @@ The rule performs the following correlation:
 9. Records the first and last observed timestamps.
 10. Generates a result when at least `4` failed attempts and `1` successful authentication are observed within the 15-minute query window.
 
-### Detection Fields
 
-The rule provides the following investigation fields:
-
-* `SourceIP` — source IP address of the authentication attempts.
-* `User` — username associated with the authentication events.
-* `Failures` — number of failed authentication attempts.
-* `Successes` — number of successful authentication events.
-* `FirstSeen` — timestamp of the first correlated event.
-* `LastSeen` — timestamp of the last correlated event.
-
-The target computer is constrained by the query to:
-
-`CORP-WS-001`
-
-### Expected Detection Pattern
-
-For the laboratory test, the expected sequence is:
-
-```text
-4625 × 4 or more
-        ↓
-4624 Type 3
-        ↓
-4624 Type 10
-        ↓
-RDP session
-```
-
-The `4624 Type 10` event is the Windows event representing the interactive RDP logon. It occurs after the successful network authentication used by the analytics rule for correlation.
-
-### Detection Result
-
-During the controlled test, the rule correlated:
-
-* Source IP: `10.0.1.11`
-* Username: `Ragnar`
-* Failed attempts: `5`
-* Successful logons: `1`
-* First observed: `2026-09-17T18:33:11.2572998Z`
-* Last observed: `2026-09-17T18:33:57.5693917Z`
-
-The correlation satisfied the rule threshold and resulted in a Microsoft Sentinel High-severity incident.
 
 
 
