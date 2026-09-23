@@ -145,9 +145,9 @@ sc query TermService
 
 #### Observed State
 
-```cmd
+
 STATE              : 4  RUNNING
-```
+
 
 `TermService` is the Windows Remote Desktop Services service responsible for handling incoming RDP connections.
 
@@ -165,7 +165,7 @@ reg query "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConn
 
 #### Observed Result
 
-```cmd
+```text
 HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server
     fDenyTSConnections    REG_DWORD    0x0
 ```
