@@ -72,7 +72,7 @@ The subsequent successful authentication generated Event ID 4624, Logon Type 3. 
 | 17 Sep 2026 18:33:57.569 | Successful network authentication — Event ID `4624`, Logon Type `3`       | Windows Security Event |
 | 17 Sep 2026 18:33:58.536 | Successful interactive RDP logon — Event ID `4624`, Logon Type `10`       | Windows Security Event |
 | 17 Sep 2026 18:33:59.396 | RDP session terminated — Event ID `4634`, Logon Type `10`                 | Windows Security Event |
-| 17 Sep 2026 21:44:35     | Microsoft Sentinel incident created/updated                               | Microsoft Sentinel     |
+| 17 Sep 2026 21:44:35.000 | Microsoft Sentinel incident created/updated                               | Microsoft Sentinel     |
 
 > **Important:** The raw Windows Security Event timestamps used for the authentication timeline are represented in UTC. Microsoft Sentinel displays incident timestamps according to the portal/workspace time-zone context. Therefore, the Sentinel incident timestamp should not be directly compared with the raw UTC event timestamps without accounting for the time-zone difference.
 
@@ -134,16 +134,6 @@ Therefore, the Sentinel incident's correlation timestamps should not be interpre
 
 Before generating the authentication attack sequence, the RDP service and network connectivity were validated from both the Windows target and the authorized Kali Linux attacker host.
 
-The validation was performed in the following order:
-
-1. Verify Remote Desktop Services
-2. Verify that RDP is enabled
-3. Verify Windows Firewall configuration
-4. Test RDP connectivity from the current attacker VM
-5. Verify TCP/3389 connectivity using Nmap
-6. Establish a legitimate RDP session using `xfreerdp`
-
----
 
 ### Step 1 — Verify Remote Desktop Services
 
@@ -155,7 +145,7 @@ sc query TermService
 
 #### Observed State
 
-```text
+```cmd
 STATE              : 4  RUNNING
 ```
 
@@ -175,7 +165,7 @@ reg query "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConn
 
 #### Observed Result
 
-```text
+```cmd
 HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server
     fDenyTSConnections    REG_DWORD    0x0
 ```
@@ -196,13 +186,28 @@ Get-NetFirewallRule -DisplayGroup "Remote Desktop"
 
 The relevant inbound TCP rule was observed as enabled:
 
-```text
-RemoteDesktop-UserMode-In-TCP
-Enabled: True
-Direction: Inbound
-Action: Allow
-Protocol: TCP
-Port: 3389
+```cmd
+Name                   : RemoteDesktop-UserMode-In-TCP
+DisplayName            : Remote Desktop - User Mode (TCP-In)
+Description            : Inbound rule for the Remote Desktop service to
+                         allow RDP traffic. [TCP 3389]
+DisplayGroup           : Remote Desktop
+Group                  : @FirewallAPI.dll,-28752
+Enabled                : True
+Profile                : Domain, Private, Public
+Platform               : {}
+Direction              : Inbound
+Action                 : Allow
+EdgeTraversalPolicy    : Block
+LooseSourceMapping     : False
+LocalOnlyMapping       : False
+Owner                  : 
+PrimaryStatus          : OK
+Status                 : The rule was parsed successfully from the
+                         store. (65536)
+```
+
+
 ```
 ![01-verify-windows-firewall.png](./screenshots/01-verify-windows-firewall.png)
 
@@ -210,7 +215,7 @@ This confirms that the Windows Firewall configuration permits inbound RDP traffi
 
 ---
 
-### Step 4 — Verify TCP/3389 Connectivity from Kali
+### Step 4 — Verify TCP/3389 Connectivity using Nmap
 
 The first network-level validation against the Windows target was performed from the Kali Linux attacker host.
 
@@ -228,9 +233,21 @@ nmap -Pn -p 3389 10.0.1.10
 
 #### Observed Result
 
-```text
+```ini
+┌──(ZeroCool🎯kali)-[~]
+└─\$ nmap -Pn -p 3389 10.0.1.10
+Starting Nmap 7.99 ( https://nmap.org ) at 2026-09-17 17:19 +0000
+Nmap scan report for corp-ws-001.internal.cloudapp.net (10.0.1.10)
+Host is up (0.0017s latency).
+
 PORT     STATE SERVICE
 3389/tcp open  ms-wbt-server
+MAC Address: [REDACTED]
+
+Nmap done: 1 IP address (1 host up) scanned in 0.16 seconds
+```
+
+
 ```
 ![02-verify-tcp3389-connectivity.png](./screenshots/02-verify-tcp3389-connectivity.png)
 
@@ -256,7 +273,9 @@ xfreerdp /v:10.0.1.10 /u:Ragnar
 
 The valid password for the authorized `Ragnar` account was used to establish a legitimate RDP session.
 
+
 The successful RDP connection served as the final service and authentication validation before generating the controlled password-guessing sequence.
+
 
 ![03-rdp-connection.png](./screenshots/03-rdp-connection.png)
 
@@ -277,19 +296,29 @@ The successful RDP connection served as the final service and authentication val
 
 The target was therefore confirmed to be correctly configured and reachable over RDP before the authentication attack simulation was executed.
 
-## Creation wordlist 
+---
 
-nano ~/rdp-passwords.txt
+## Wordlist Preparation
 
-Put:
+A custom password wordlist was created on the Kali Linux host containing the incorrect passwords for the initial guessing attempts, followed by the correct password.
+
+#### Create the Password List
+
+```bash
+cat << 'EOF' > ~/rdp-passwords.txt
 111111111111
 2222222222222
 333333333333
 444444444444
+555555555555
+EOF
+```
 
-Check:
+#### Verify the Wordlist Content
+
+```bash
 cat ~/rdp-passwords.txt
-
+```
 
 
 ## Creation of a Custom Atomic Test
@@ -300,16 +329,14 @@ The RDP password-guessing simulation was implemented as a custom Atomic-style te
 
 The test accepts the target IP address and username as input arguments and executes five sequential authentication attempts using intentionally invalid passwords.
 
-
-
 ### Execution Command
 
-The test was executed manually on `Aktep-02` using:
+The test was executed manually on `Aktep-02` using the prepared wordlist:
 
 ```bash
-for pass in "111111111111" "2222222222222" "333333333333" "444444444444" "555555555555"; do
-  echo "[T1110.001] Attempting RDP authentication with password: $pass"
-  xfreerdp /v:10.0.1.10 /u:Ragnar /p:"$pass" /cert:ignore /timeout:5000
+for pass in $(cat ~/rdp-passwords.txt) "555555555555"; do
+  echo "[T1110.001] Attempting RDP authentication with password: \$pass"
+  xfreerdp /v:10.0.1.10 /u:Ragnar /p:"\$pass" /cert:ignore /timeout:5000
   sleep 2
 done
 ```
@@ -331,6 +358,7 @@ The resulting events were ingested into the `SecurityEvent` table and subsequent
 
 This provided the failed-authentication sequence required to validate the detection logic for `T1110.001`.
 
+---
 
 ## Analytics Rule
 
@@ -354,7 +382,8 @@ The detection correlates authentication events from the same source IP and usern
 | Target Computer            | `CORP-WS-001`                                                                                                                                               |
 | Minimum Failed Attempts    | `4`                                                                                                                                                         |
 | Required Successful Logons | `1`                                                                                                                                                         |
-| Correlation Window         | `15 minutes`                                                                                                                                                |
+| Correlation Window         | `15 minutes`
+                                                                                                                                             |
 
 ![04-analytics-rule.png](./screenshots/04-analytics-rule.png)
 
@@ -408,11 +437,12 @@ for pass in "111111111111" "2222222222222" "333333333333" "444444444444" "555555
 done
 ```
 
-Manual Successful Authentication
+### Manual Successful Authentication
 
-After the five failed password-guessing attempts, a successful RDP authentication was performed manually by the lab operator using the valid credentials for the authorized Ragnar account.
+After the five failed password-guessing attempts, a successful RDP authentication was performed manually by the lab operator using the valid credentials for the authorized `Ragnar` account.
 
 ---
+
 
 ## Incident 
 
@@ -428,6 +458,8 @@ The investigation focused on validating the authentication sequence, identifying
 ### Step 1 — Reconstruct the Authentication Sequence
 
 The following query was used to retrieve the authentication events generated during the attack window:
+
+### KQL Query
 
 [02-Reconstruct-the-Authentication-Sequence.kql](./queries/02-Reconstruct-the-Authentication-Sequence.kql)
 
@@ -453,6 +485,8 @@ The failed attempts occurred over approximately **8.25 seconds**, followed by th
 
 The next query was used to examine the events immediately surrounding the successful authentication:
 
+### KQL Query
+
 [03-identify-the-rdp-session-created-after-authentication.kql](./queries/03-identify-the-rdp-session-created-after-authentication.kql)
 
 
@@ -471,6 +505,8 @@ The interactive RDP session lasted approximately:
 
 To determine whether additional successful authentications for the same account and source IP occurred during the investigation window:
 
+### KQL Query
+
 [04-successful-logons.kql](./queries/04-successful-logons.kql)
 
 
@@ -487,6 +523,8 @@ No additional successful `4624` authentication events for this account/source pa
 ### Step 4 — Check Process Creation
 
 Because process creation is particularly relevant when determining whether the authenticated session was used to execute commands, Event ID `4688` was queried separately:
+
+### KQL Query
 
 [05-check-process-creation.kql](./queries/05-check-process-creation.kql)
 
@@ -526,6 +564,8 @@ Therefore, these events are treated as **system/session initialization activity*
 
 The following query was used to identify account and group manipulation after the successful authentication:
 
+### KQL Query
+
 [05-check-process-creation.kql](./queries/05-check-process-creation.kql)
 
 No account or group modification events were observed in the investigated window.
@@ -544,6 +584,8 @@ The following potentially relevant operations were therefore not observed:
 
 Potential persistence mechanisms involving services and scheduled tasks were also checked:
 
+### KQL Query
+
 [06-check-persistence-through-services-and-scheduled-tasks.kql](./queries/06-check-persistence-through-services-and-scheduled-tasks.kql)
 
 No events associated with service installation or scheduled-task creation/modification were observed in the available telemetry.
@@ -554,7 +596,9 @@ This means that no evidence of persistence through the queried Windows service o
 
 The final authentication/session query was used to confirm how the RDP session ended:
 
-[07-verify-session-termination.kql](./queries/07-verify-session-termination.kqll)
+### KQL Query
+
+[07-verify-session-termination.kql](./queries/07-verify-session-termination.kql)
 
 
 ![12-verify-session-termination.png](./screenshots/12-verify-session-termination.png)
@@ -593,19 +637,9 @@ CORP-WS-001
           Session terminated
 ```
 
-The complete observed sequence was:
 
-```text
-5 × 4625 Type 3
-        ↓
-4624 Type 3
-        ↓
-4624 Type 10
-        ↓
-4634 Type 10
-```
 
-The five failed authentication attempts were generated by the controlled password-guessing test. The subsequent successful authentication was performed manually by the lab operator using the valid `Ragnar` credentials to validate the complete detection scenario.
+The five failed authentication attempts were generated by the controlled password-guessing test. The subsequent successful authentication was performed manually by me using the valid `Ragnar` credentials to validate the complete detection scenario.
 
 No additional successful `4624` events for `Ragnar` from `10.0.1.11` were observed during the `18:30–19:00 UTC` investigation window.
 
@@ -664,7 +698,7 @@ Overall, the available telemetry supports the conclusion that the laboratory sce
        Session Termination
 ```
 
-> **Validation note:** The five failed authentication attempts were generated by the controlled `xfreerdp` password-guessing test. The subsequent successful authentication was performed manually by the laboratory operator using valid `Ragnar` credentials to validate the complete detection and investigation workflow. The successful login was not generated by the password-guessing test itself.
+> **Validation note:** The five failed authentication attempts were generated by the controlled `xfreerdp` password-guessing test. The subsequent successful authentication was performed manually by me using valid `Ragnar` credentials to validate the complete detection and investigation workflow. The successful login was not generated by the password-guessing test itself.
 
 ---
 
@@ -717,8 +751,8 @@ After initial containment, investigate whether the successful authentication res
 * Review scheduled tasks, services, startup mechanisms, and other persistence locations if endpoint telemetry is available.
 * Check for credential-access activity such as LSASS access, credential dumping, or suspicious registry/file access when supported by endpoint telemetry.
 * Review lateral-movement activity from the affected host to other systems.
-* Reset the affected account's password if successful credential guessing or compromise cannot be ruled out.
-* Revoke active sessions and authentication tokens where supported by the identity infrastructure.
+* Reset the affected account's password.
+
 
 ---
 
@@ -728,7 +762,7 @@ Implement controls that reduce exposure to remote credential-guessing attacks:
 
 * **Multi-Factor Authentication (MFA):** Require MFA for remote-access workflows wherever supported, with phishing-resistant methods preferred for privileged and high-value accounts.
 
-* **Restrict RDP Exposure:** Do not expose RDP directly to the public Internet when avoidable. Restrict access through VPN, bastion hosts, jump servers, or tightly scoped network ACLs.
+* **Restrict RDP Exposure:** Do not expose RDP directly to the public Internet when avoidable. 
 
 * **Network-Level Authentication:** Keep Network Level Authentication (NLA) enabled for RDP to require authentication before the full interactive desktop session is established.
 
@@ -748,19 +782,20 @@ Implement controls that reduce exposure to remote credential-guessing attacks:
 
 ## Conclusion
 
-The laboratory exercise successfully demonstrated the detection and investigation of an RDP password-guessing scenario.
+The investigation confirmed that the configured Sentinel detection successfully correlated repeated authentication failures with a subsequent successful authentication and generated the expected incident.
 
-The controlled attack was executed from `Aktep-02` (`10.0.1.11`) against the authorized RDP service on `CORP-WS-001` (`10.0.1.10`). Five intentionally invalid passwords were submitted against a single account, `Ragnar`, using `xfreerdp`.
+The primary finding was not simply the presence of failed RDP logons, but the complete authentication sequence and its relationship to the detection logic. The available telemetry provided sufficient evidence to validate the alert and establish the absence of additional suspicious authentication or post-authentication activity within the investigated scope.
 
-The attack generated five consecutive Windows Security `Event ID 4625` records with `LogonType 3`, originating from the Kali host. The authentication failures occurred between `18:33:11.257` and `18:33:19.510` UTC.
+The successful authentication was intentionally introduced as a separate validation step, allowing the detection workflow to be tested end-to-end without treating the controlled password-guessing activity itself as a successful compromise.
 
-After the failed attempts, the laboratory operator manually authenticated with valid credentials. This produced a successful network authentication (`4624 Type 3`) followed approximately one second later by an interactive RDP logon (`4624 Type 10`). The session subsequently terminated with `4634 Type 10`.
+No evidence of persistence, account modification, or process creation was identified in the available `SecurityEvent` telemetry during the post-authentication investigation window.
 
-The Sentinel analytics rule correlated the five failed authentication attempts with the successful network authentication from the same source IP and account within the configured 15-minute window. This resulted in a **High-severity Microsoft Sentinel incident** involving source IP `10.0.1.11` and account `Ragnar`.
+The case therefore validates the complete SOC workflow for this scenario:
 
-The investigation did not identify additional successful logons, process-creation events, account or group modifications, or persistence-related events in the available `SecurityEvent` telemetry following the successful authentication.
+**authentication telemetry → correlation → Sentinel incident → investigation → classification → response decision**
 
-The final classification was therefore **Benign True Positive (Authorized Activity)**. The detection mechanism functioned as designed, while the investigation also demonstrated the importance of distinguishing the authentication event that triggered the analytic correlation (`4624 Type 3`) from the subsequent interactive RDP logon (`4624 Type 10`).
+The resulting incident was classified as **Benign True Positive (Authorized Activity)**.
+
 
 ---
 
@@ -772,20 +807,14 @@ The final classification was therefore **Benign True Positive (Authorized Activi
 
 * **Password Guessing vs. Password Spraying:** This scenario represents **password guessing (`T1110.001`)** because multiple passwords were tested against a single account. Password spraying would instead involve one or a small number of passwords tested across multiple accounts.
 
-* **Event Sequence Matters:** The observed authentication sequence was:
-  `4625 × 5 → 4624 Type 3 → 4624 Type 10 → 4634 Type 10`.
-
 * **Successful Authentication Context:** The successful `4624 Type 3` event satisfied the analytics rule. The following `4624 Type 10` event provided additional evidence that an interactive RDP session was established.
-
-* **Manual Validation:** The successful authentication was deliberately performed by the laboratory operator rather than by the guessing test. Separating attack generation from successful-login validation makes the detection workflow reproducible and avoids incorrectly attributing the valid credentials to the password-guessing simulation.
 
 * **SIEM Validation:** Microsoft Sentinel successfully correlated the authentication events, mapped the source IP and account entities, and generated a High-severity incident.
 
-* **Telemetry Limitations:** The current DCR collects Windows Security events `4624` and `4625`. Therefore, the absence of `4688`, account-modification, or persistence events in the investigation means that no such events were observed in the available `SecurityEvent` telemetry; it does not constitute proof that no endpoint activity occurred.
+* **Telemetry Limitations:** The current DCR collects Windows Security events `4624` and `4625`.
 
-* **Reusable Detection Model:** The same high-level detection concept can be applied to SSH, SMB, FTP, and web authentication, while the underlying telemetry, event semantics, and service-specific success/failure indicators must be adapted to each protocol.
 
-```
+
 
 
 
