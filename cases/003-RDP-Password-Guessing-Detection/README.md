@@ -135,6 +135,71 @@ Therefore, the Sentinel incident's correlation timestamps should not be interpre
 * Check for service and scheduled-task persistence
 * Document telemetry limitations and investigation findings
 
+## Lab Preparation and RDP Validation
+
+Before generating the authentication attack sequence, the RDP service and network connectivity were validated from both the Windows target and the authorized Kali Linux attacker host.
+
+### Step 1 — Verify Remote Desktop Services
+
+The Windows Remote Desktop Services service was checked using:
+
+```powershell
+sc query TermService
+```
+
+#### Observed State
+
+```text
+STATE              : 4  RUNNING
+```
+
+`TermService` is the Windows Remote Desktop Services service responsible for handling incoming RDP connections.
+
+This confirms that the RDP service is running on the target endpoint.
+
+---
+
+### Step 2 — Verify RDP Is Enabled
+
+The Windows Terminal Services configuration was checked using:
+
+```cmd
+reg query "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections
+```
+
+#### Observed Result
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server
+    fDenyTSConnections    REG_DWORD    0x0
+
+A value of `0x0` indicates that RDP connections are permitted by the Windows Terminal Services configuration.
+
+This confirms that Remote Desktop is enabled at the operating system level.
+
+---
+
+### Step 3 — Verify Windows Firewall
+
+The Windows Defender Firewall Remote Desktop rules were inspected using PowerShell:
+
+```powershell
+Get-NetFirewallRule -DisplayGroup "Remote Desktop"
+```
+
+The relevant inbound TCP rule was observed as enabled:
+
+* `RemoteDesktop-UserMode-In-TCP`
+* **Enabled:** `True`
+* **Direction:** `Inbound`
+* **Action:** `Allow`
+* **Protocol:** `TCP`
+* **Port:** `3389`
+
+![Windows Firewall RDP Rule](./screenshots/01-verify-windows-firewall.png)
+
+This confirms that the Windows Firewall configuration permits inbound RDP traffic on TCP/3389.
+
+
 ### Step 4 — Verify TCP/3389 Connectivity Using Nmap
 
 The first network-level validation against the Windows target was performed from the Kali Linux attacker host.
@@ -159,7 +224,9 @@ nmap -Pn -p 3389 10.0.1.10
 
 `MAC Address: [REDACTED]`
 
-![TCP/3389 Connectivity](./screenshots/02-verify-tcp3389-connectivity.png)
+![RDP Connection](./screenshots/02-verify-tcp3389-connectivity.png)
+
+
 
 The result confirms that TCP/3389 is reachable on `CORP-WS-001` and that the target is exposing the Microsoft RDP service.
 
