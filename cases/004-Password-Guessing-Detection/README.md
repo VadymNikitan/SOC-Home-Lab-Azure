@@ -144,7 +144,7 @@ The incident demonstrates that the Analytics Rule detected the intended authenti
 * Investigate subsequent FTP-related activity within the available telemetry
 * Document telemetry limitations and investigation findings
 
-  ## Lab Preparation and FTP Validation
+## Lab Preparation and FTP Validation
 
 Before generating the authentication attack sequence, the FTP service, logging configuration, and network connectivity were validated on the Ubuntu target and from the authorized Kali Linux attacker host.
 
@@ -199,7 +199,7 @@ Password: (incorrect password)
 Target VM FILE-01:
 
 ```bash
-sudo grep -iE 'vsftpd|bubaleh|authentication failure' /var/log/auth.log | tail -20
+sudo grep -iE 'vsftpd|authentication failure' /var/log/auth.log | tail -20
 ```
 
 #### Observed State
@@ -224,7 +224,7 @@ Neo@FILE01:~$ sudo grep -RniE 'vsftpd|auth\.|authpriv' \
 /etc/rsyslog.d/50-default.conf:29:#     auth,authpriv.none;\
 /etc/rsyslog.d/50-default.conf:32:#     auth,authpriv.none;\
 
-Check rsyslog:
+### Check rsyslog:
 
 ```bash
 systemctl status rsyslog
@@ -306,11 +306,40 @@ Performed manual by lab operator after controlled attack.
 [04-kql-query-for-analytics-rule.kql](./queries/04-kql-query-for-analytics-rule.kql)
 
 Got:
-*SourceIP
-*10.0.0.4
-*User Neo
-*Failed Attempts 5
-*SuccessfulLogins 1
+* SourceIP
+* 10.0.0.4
+* User Neo
+* Failed Attempts 5
+* SuccessfulLogins 1
+
+### Step 8 Create Analytics Rule
+
+Sentinel:
+Analytics
+→ Scheduled query rule
+
+General
+Name:
+FTP Brute Force Followed by Successful Login
+
+Description:
+Detects multiple failed FTP authentication attempts followed by a successful FTP login from the same source IP against the same account.
+
+Severity:
+High
+
+Status:
+Enabled
+
+MITRE ATT&CK:
+Tactic: Credential Access
+Technique: T1110 - Brute Force
+
+[04-kql-query-for-analytics-rule.kql](./queries/04-kql-query-for-analytics-rule.kql)
+
+
+
+
 
 
 
