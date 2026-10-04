@@ -256,6 +256,80 @@ Ubuntu → AMA → DCR → Log Analytics → Sentinel
 A Syslog event generated on FILE-01 was successfully ingested into Microsoft Sentinel, confirming that the Azure Monitor Agent (AMA) and Data Collection Rule (DCR) are collecting and forwarding Linux Syslog data. 
 
 
+### Step 7 Create Passwords List and run Controlled Attack
+
+```bash
+printf "wrongA\nwrongB\nwrongC\nwrongD\nwrongE\n" > bad_passwords.txt
+```
+
+Check:
+
+```bash
+cat bad_passwords.txt
+```
+
+![04-setup-passwords-list.png](./screenshots/04-setup-passwords-list.png)
+
+Controlled Attack:
+
+```bash
+hydra -l Neo -P bad_passwords.txt ftp://10.0.0.5
+```
+
+### Step 8 Check Sentinel Logs
+
+### KQL Query
+
+[02-sentinel-logs.kql](./queries/02-sentinel-logs.kql)
+
+After Hydra got:
+SourceIP:  10.0.0.4
+User:      Neo
+Failures:  5
+
+![05-syslog-failures-logs.png](./screenshots/05-syslog-failures-logs.png)
+
+### Successful login
+
+Performed manual by lab operator after controlled attack.
+
+### KQL Query
+
+[03-successful-login.kql](./queries/03-successful-login.kql)
+
+![06-successful-login.png](./screenshots/06-successful-login.png)
+
+### Test KQL Query for Analytics Rule
+
+### KQL Query
+
+[04-kql-query-for-analytics-rule.kql](./queries/04-kql-query-for-analytics-rule.kql)
+
+Got:
+*SourceIP
+*10.0.0.4
+*User Neo
+*Failed Attempts 5
+*SuccessfulLogins 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
