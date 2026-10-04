@@ -1,0 +1,5 @@
+Syslog
+| where TimeGenerated > ago(15m)
+| where SyslogMessage has "OK LOGIN"
+| project TimeGenerated, ProcessName, SyslogMessage
+| order by TimeGenerated desc
