@@ -1,0 +1,3 @@
+Syslog
+| where TimeGenerated > ago(1h)
+| order by TimeGenerated desc
