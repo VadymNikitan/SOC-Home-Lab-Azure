@@ -148,7 +148,7 @@ The incident demonstrates that the Analytics Rule detected the intended authenti
 
 Before generating the authentication attack sequence, the FTP service, logging configuration, and network connectivity were validated on the Ubuntu target and from the authorized Kali Linux attacker host.
 
-### Step 1 — Scan ports
+### Step 1 — Scan Ports
 
 The vsftpd service was checked on the Ubuntu target using:
 
@@ -167,7 +167,7 @@ nmap -Pn -p- 10.0.0.5
 
 ---
 
-### Step 2 — Verify version
+### Step 2 — Verify Version
 
 
 ```bash
@@ -182,13 +182,82 @@ nmap -sV -p 21,22  10.0.0.5
 
 ---
 
-### Step 3 — Verify FTP 
+### Step 3 — Verify FTP Authentication
+
+ftp 10.0.0.5
+Use:
+Username: 
+Password: (incorrect password)
+
+530 Login incorrect.
+
 
 ---
 
-### Step 4 — Verify FTP Connectivity Using Nmap
+### Step 4 — Verify Local FTP Logs
 
-The first network-level validation against the Ubuntu target was performed from the authorized Kali Linux attacker host.
+Target VM FILE-01:
+
+```bash
+sudo grep -iE 'vsftpd|bubaleh|authentication failure' /var/log/auth.log | tail -20
+```
+
+#### Observed State
+2026-09-30T08:27:02.775168+00:00 FILE01 vsftpd: pam_unix(vsftpd:auth): authentication failure; logname= uid=0 euid=0 tty=ftp ruser=root rhost=::ffff:10.0.0.4  user=root
+
+Kali → FTP → vsftpd → PAM → auth.log
+
+### Step 5 Set UP rsyslog
+
+Check:
+
+```bash
+sudo grep -RniE 'vsftpd|auth\.|authpriv' \
+/etc/rsyslog.conf /etc/rsyslog.d/ 2>/dev/null
+```
+Got standard configuration:
+
+Neo@FILE01:~$ sudo grep -RniE 'vsftpd|auth\.|authpriv' \
+/etc/rsyslog.conf /etc/rsyslog.d/ 2>/dev/null
+/etc/rsyslog.d/50-default.conf:8:auth,authpriv.*                        /var/log/auth.log
+/etc/rsyslog.d/50-default.conf:9:*.*;auth,authpriv.none         -/var/log/syslog
+/etc/rsyslog.d/50-default.conf:29:#     auth,authpriv.none;\
+/etc/rsyslog.d/50-default.conf:32:#     auth,authpriv.none;\
+
+Check rsyslog:
+
+```bash
+systemctl status rsyslog
+```
+Observed State:
+Active: active (running)
+
+### Step 5 Create Data Collection Rule
+
+DCR for Linux Syslog.
+DCR:
+Data sources
+→ Linux Syslog
+
+Facility:
+auth
+authpriv
+
+### Step 6 Verify Sentinel Syslog
+
+### KQL Query
+
+[01-verify-sentinel-syslog.kql](./queries/01-verify-sentinel-syslog.kql)
+
+![03-syslog-event.png](./screenshots/03-syslog-event.png)
+
+Ubuntu → AMA → DCR → Log Analytics → Sentinel
+
+A Syslog event generated on FILE-01 was successfully ingested into Microsoft Sentinel, confirming that the Azure Monitor Agent (AMA) and Data Collection Rule (DCR) are collecting and forwarding Linux Syslog data. 
+
+
+
+
 
 #### Install Nmap
 
