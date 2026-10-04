@@ -143,3 +143,202 @@ The incident demonstrates that the Analytics Rule detected the intended authenti
 * Reconstruct the FTP authentication timeline from raw Syslog records
 * Investigate subsequent FTP-related activity within the available telemetry
 * Document telemetry limitations and investigation findings
+
+  ## Lab Preparation and FTP Validation
+
+Before generating the authentication attack sequence, the FTP service, logging configuration, and network connectivity were validated on the Ubuntu target and from the authorized Kali Linux attacker host.
+
+### Step 1 — Scan ports
+
+The vsftpd service was checked on the Ubuntu target using:
+
+```bash
+nmap -Pn -p- 10.0.0.5
+```
+
+#### Observed State
+
+* PORT   STATE    SERVICE
+* 21/tcp filtered ftp
+* 22/tcp filtered ssh
+
+![01-reconnaissance.png](./screenshots/01-reconnaissance.png)
+
+
+---
+
+### Step 2 — Verify version
+
+
+```bash
+nmap -sV -p 21,22  10.0.0.5
+```
+#### Observed State
+
+*21/tcp open  ftp  vsftpd 3.0.5
+*22/tcp open  ssh  OpenSSH 9.6p1 Ubuntu
+
+![02-reconnaissance-versions.png](./screenshots/02-reconnaissance-versions.png)
+
+---
+
+### Step 3 — Verify FTP 
+
+---
+
+### Step 4 — Verify FTP Connectivity Using Nmap
+
+The first network-level validation against the Ubuntu target was performed from the authorized Kali Linux attacker host.
+
+#### Install Nmap
+
+```bash
+sudo apt update && sudo apt install -y nmap
+```
+
+#### Port Scan
+
+```bash
+nmap -Pn -p 21 10.0.0.5
+```
+
+#### Observed Result
+
+```text
+PORT   STATE SERVICE
+21/tcp open  ftp
+```
+
+The result confirms that TCP/21 is reachable on `FILE01` and that the target is exposing the FTP service.
+
+---
+
+### Step 5 — Establish a Legitimate FTP Session
+
+After TCP/21 connectivity was confirmed, a legitimate FTP authentication was performed from the authorized Kali Linux laboratory host.
+
+The target was:
+
+```text
+10.0.0.5
+```
+
+The account used for the validation was:
+
+```text
+Neo
+```
+
+The successful authentication generated a vsftpd log entry containing:
+
+```text
+OK LOGIN: Client "::ffff:10.0.0.4"
+```
+
+This confirmed that:
+
+* the FTP service was reachable;
+* the `Neo` account could authenticate successfully;
+* the source IP was correctly recorded as `10.0.0.4`;
+* vsftpd authentication telemetry was being generated;
+* the authentication event was available for subsequent ingestion into Microsoft Sentinel.
+
+The legitimate FTP authentication served as the final service and authentication validation before generating the controlled password-guessing sequence.
+
+---
+
+### Validation Summary
+
+| Validation             | Result                |
+| ---------------------- | --------------------- |
+| vsftpd service         | Running               |
+| FTP listening port     | `21/tcp`              |
+| FTP service            | `vsftpd`              |
+| Target host            | `FILE01`              |
+| Target IP              | `10.0.0.5`            |
+| Attacking host         | Kali Linux            |
+| Attacker IP            | `10.0.0.4`            |
+| FTP log                | `/var/log/vsftpd.log` |
+| Syslog forwarding      | Configured            |
+| Legitimate FTP Session | Successful            |
+| Target Account         | `Neo`                 |
+
+The target was therefore confirmed to be correctly configured and reachable over FTP before the authentication attack simulation was executed.
+
+---
+
+## Wordlist Preparation
+
+A custom password wordlist was used on the Kali Linux host containing intentionally incorrect passwords for the initial guessing attempts.
+
+The final successful authentication was then performed manually by the lab operator using the valid `Neo` account credentials.
+
+The objective was to generate the following authentication sequence:
+
+```text
+FAIL LOGIN × 5 → OK LOGIN × 1
+```
+
+The five failed authentication attempts were generated as part of the controlled laboratory simulation.
+
+The subsequent successful FTP authentication was intentionally performed by the lab operator to validate the Sentinel detection logic.
+
+---
+
+## Creation of a Custom Atomic Test
+
+The FTP password-guessing simulation was implemented as a controlled laboratory test mapped to MITRE ATT&CK technique `T1110 — Brute Force`.
+
+The test generated repeated FTP authentication attempts against the authorized `FILE01` endpoint using the `Neo` account.
+
+The simulation was designed to produce:
+
+* five failed FTP authentication attempts;
+* one subsequent successful FTP authentication;
+* the same source IP for the failed and successful events;
+* the same target account for the failed and successful events.
+
+### Execution
+
+The authentication sequence was generated manually from the authorized Kali Linux laboratory host.
+
+The source host was:
+
+```text
+Kali Linux — 10.0.0.4
+```
+
+The target was:
+
+```text
+FILE01 — 10.0.0.5
+```
+
+The target account was:
+
+```text
+Neo
+```
+
+The successful authentication was intentionally performed manually by the lab operator after the failed attempts.
+
+### Observed Result
+
+The execution generated five failed FTP authentication events followed by one successful authentication event.
+
+* **Failed event:** `FAIL LOGIN`
+* **Successful event:** `OK LOGIN`
+* **Username:** `Neo`
+* **Source IP:** `10.0.0.4`
+* **Target IP:** `10.0.0.5`
+* **Failed attempts:** `5`
+* **Successful logins:** `1`
+
+The resulting events were ingested into the `Syslog` table and subsequently correlated by the Microsoft Sentinel Analytics Rule:
+
+`FTP Brute Force Followed by Successful Login`
+
+The successful authentication was a deliberate laboratory validation step and should not be interpreted as evidence of unauthorized access.
+
+This provided the failed-authentication sequence required to validate the detection logic for `T1110 — Brute Force`.
+
