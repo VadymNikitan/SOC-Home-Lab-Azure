@@ -1,0 +1,32 @@
+Syslog
+| where TimeGenerated > ago(15m)
+| where ProcessName == "vsftpd"
+| extend SourceIP = extract(@"Client ""::ffff:([0-9.]+)""", 1, SyslogMessage)
+| extend User = extract(@"\[([^\]]+)\] (?:FAIL|OK) LOGIN", 1, SyslogMessage)
+| extend EventType = case(
+    SyslogMessage has "FAIL LOGIN", "FAIL",
+    SyslogMessage has "OK LOGIN", "SUCCESS",
+    "OTHER"
+)
+| where EventType != "OTHER"
+| where isnotempty(SourceIP)
+| where isnotempty(User)
+| summarize
+    FailedAttempts = countif(EventType == "FAIL"),
+    SuccessfulLogins = countif(EventType == "SUCCESS"),
+    FirstFailure = minif(TimeGenerated, EventType == "FAIL"),
+    LastFailure = maxif(TimeGenerated, EventType == "FAIL"),
+    SuccessTime = minif(TimeGenerated, EventType == "SUCCESS")
+    by SourceIP, User
+| where FailedAttempts >= 5
+| where SuccessfulLogins >= 1
+| where SuccessTime > LastFailure
+| where SuccessTime <= LastFailure + 5m
+| project
+    SourceIP,
+    User,
+    FailedAttempts,
+    SuccessfulLogins,
+    FirstFailure,
+    LastFailure,
+    SuccessTime
