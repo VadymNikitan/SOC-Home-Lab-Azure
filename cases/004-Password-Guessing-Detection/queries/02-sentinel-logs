@@ -1,0 +1,8 @@
+Syslog
+| where TimeGenerated > ago(10m)
+| where ProcessName == "vsftpd"
+| where SyslogMessage has "authentication failure"
+| extend SourceIP = extract(@"rhost=([0-9.]+)", 1, SyslogMessage)
+| extend User = extract(@"(?:^|\s)user=([^\s]+)", 1, SyslogMessage)
+| project TimeGenerated, SourceIP, User, SyslogMessage
+| order by TimeGenerated desc
