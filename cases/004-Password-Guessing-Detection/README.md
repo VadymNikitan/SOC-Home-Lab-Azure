@@ -334,6 +334,8 @@ The authorized test was executed against the laboratory FTP service:
 hydra -l Neo -P bad_passwords.txt ftp://10.0.0.5
 ```
 
+![07-hydra-test.png](./screenshots/07-hydra-test.png)
+
 The test targeted the `Neo` account on `FILE01` from the Kali Linux host.
 
 ---
@@ -414,9 +416,15 @@ A scheduled query rule was created in Microsoft Sentinel.
 
 The rule was designed to detect repeated failed FTP authentication attempts followed by a successful login from the same source IP and against the same account within the configured correlation window.
 
-Microsoft Sentinel generated an incident for the controlled test, confirming that the Analytics Rule detected the intended authentication sequence.
-
 The successful login was performed manually by the lab operator and should not be interpreted as an unauthorized compromise.
+
+### Step 13 — Validate the Incident in Microsoft Sentinel
+
+After the controlled attack, Microsoft Sentinel generated an incident based on the Analytics Rule:
+
+![08-incident.png](./screenshots/08-incident.png)
+
+![09-incident.png](./screenshots/09-incident.png)
 
 
 
