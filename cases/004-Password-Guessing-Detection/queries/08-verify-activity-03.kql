@@ -1,0 +1,5 @@
+Syslog
+| where TimeGenerated > datetime(2026-10-03T11:06:59.988967Z)
+| where TimeGenerated < datetime(2026-10-03T11:20:00Z)
+| order by TimeGenerated asc
+| project TimeGenerated, ProcessName, SyslogMessage
