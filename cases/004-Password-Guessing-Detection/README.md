@@ -426,6 +426,117 @@ After the controlled attack, Microsoft Sentinel generated an incident based on t
 
 ![09-incident.png](./screenshots/09-incident.png)
 
+### Investigation 
+
+#### Verify vsftpd authentication timeline:
+
+#### KQL Query
+
+[05-vsftpd-authentication-timeline.kql](./queries/05-vsftpd-authentication-timeline.kql)
+
+
+![10-vsftpd-authentication-timeline.png](./screenshots/10-vsftpd-authentication-timeline.png)
+
+
+#### Verify Activity
+
+#### KQL Query
+
+[06-verify-activity-01.kql](./queries/06-verify-activity-01.kql)
+
+![11-verify-activity.png](./screenshots/11-verify-activity.png)
+
+#### KQL Query
+
+[07-verify-activity-02.kql](./queries/07-verify-activity-02.kql)
+
+![12-verify-activity-02.png](./screenshots/12-verify-activity-02.png)
+
+#### KQL Query
+
+[08-verify-activity-03.kql](./queries/08-verify-activity-03.kql)
+
+![13-verify-activity-03.png](./screenshots/13-verify-activity-03.png)
+
+There are only system events:
+MetricsExtension — Azure heartbeat/metrics;
+systemd — standard systemd services;
+fwupd — firmware metadata updates;
+kernel — hv_storvsc messages related to the Azure virtual disk;
+systemd-tmpfiles-clean — standard /tmp cleanup;
+WALinuxAgent — Azure Linux Agent.
+This does not look like post-exploitation activity, and there are no signs of command execution via FTP in these events.
+
+FTP  — factual chronology
+
+11:06:32
+FTP CONNECT от 10.0.0.4
+11:06:33
+PAM authentication failures
+11:06:36
+5 FAIL LOGIN для Neo
+11:06:49
+Новый FTP CONNECT
+11:06:59.988
+OK LOGIN for Neo
+11:07–11:20
+No other FTP events detected.
+
+### Verify File-01
+
+```bash
+sudo grep -R 'Neo' /var/log/ 2>/dev/null | grep -E 'vsftpd|ftp'
+```
+
+/var/log/syslog:2026-10-03T11:06:36.021561+00:00 FILE01 vsftpd: Sat Oct  3 11:06:36 2026 [pid 5173] [Neo] FAIL LOGIN: Client "::ffff:10.0.0.4"
+/var/log/syslog:2026-10-03T11:06:36.036330+00:00 FILE01 vsftpd: Sat Oct  3 11:06:36 2026 [pid 5172] [Neo] FAIL LOGIN: Client "::ffff:10.0.0.4"
+/var/log/syslog:2026-10-03T11:06:36.036461+00:00 FILE01 vsftpd: Sat Oct  3 11:06:36 2026 [pid 5169] [Neo] FAIL LOGIN: Client "::ffff:10.0.0.4"
+/var/log/syslog:2026-10-03T11:06:36.037192+00:00 FILE01 vsftpd: Sat Oct  3 11:06:36 2026 [pid 5171] [Neo] FAIL LOGIN: Client "::ffff:10.0.0.4"
+/var/log/syslog:2026-10-03T11:06:36.037859+00:00 FILE01 vsftpd: Sat Oct  3 11:06:36 2026 [pid 5170] [Neo] FAIL LOGIN: Client "::ffff:10.0.0.4"
+/var/log/syslog:2026-10-03T11:06:59.988646+00:00 FILE01 vsftpd: Sat Oct  3 11:06:59 2026 [pid 5189] [Neo] OK LOGIN: Client "::ffff:10.0.0.4"
+
+В /var/log/auth.log видны ровно 5 неудачных и 1 удачная PAM-аутентификаций:
+источник: 10.0.0.4
+учетная запись: Neo
+сервис: vsftpd
+время: 11:06:36.036330+00:00–11:06:59.988646+00:00
+После этого в показанном выводе нет записей о последующих действиях пользователя через FTP.
+
+```bash
+sudo awk '$0 ~ /2026-10-03T11:06/ && $0 ~ /vsftpd/' /var/log/syslog
+```
+
+2026-10-03T11:06:59.988646+00:00 FILE01 vsftpd: Sat Oct  3 11:06:59 2026 [pid 5189] [Neo] OK LOGIN: Client "::ffff:10.0.0.4"
+
+За период 11:06 на FILE-01 есть только одна запись vsftpd:
+11:06:59.988646+00:00 FILE01 vsftpd: Sat Oct  3 11:06:59 2026 [pid 5189] [Neo] OK LOGIN: Client "::ffff:10.0.0.4"
+
+
+И после успешной аутентификации нет записей STOR, RETR, DELE, MKD, RMD, LIST, CWD и т. п.
+Successful FTP authentication was confirmed, but no subsequent FTP file operations or file modifications were observed on FILE-01. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
