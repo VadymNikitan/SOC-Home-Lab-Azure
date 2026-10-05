@@ -1,0 +1,4 @@
+Syslog
+| where ProcessName == "vsftpd"
+| where SyslogMessage has "10.0.0.4"
+| order by TimeGenerated asc
