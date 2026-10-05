@@ -1,0 +1,6 @@
+Syslog
+| where TimeGenerated > datetime(2026-10-03 11:06:59)
+| where TimeGenerated < datetime(2026-10-03 11:20:00)
+| where SyslogMessage has "Neo"
+| order by TimeGenerated asc
+| project TimeGenerated, ProcessName, SyslogMessage
