@@ -1,0 +1,6 @@
+Syslog
+| where ProcessName == "vsftpd"
+| where SyslogMessage has "10.0.0.4"
+| where TimeGenerated > datetime(2026-10-03 11:06:59.988967)
+| order by TimeGenerated asc
+| project TimeGenerated, SyslogMessage
