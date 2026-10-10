@@ -1,0 +1,13 @@
+Syslog
+| where TimeGenerated between (
+    datetime(2026-10-03 00:00:00) ..
+    datetime(2026-10-03 23:59:59)
+)
+| where ProcessName == "sshd"
+| where SyslogMessage has_any (
+    "Failed password",
+    "Invalid user",
+    "authentication failure"
+)
+| project TimeGenerated, HostName, SyslogMessage
+| order by TimeGenerated asc
