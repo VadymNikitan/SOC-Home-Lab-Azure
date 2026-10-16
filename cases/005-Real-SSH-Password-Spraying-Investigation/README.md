@@ -181,50 +181,347 @@ Which source IPs are responsible for the SSH authentication failures?
 
 ![09-virustotal-05.png](./screenshots/09-virustotal-05.png)
 
+## Executive Summary
+В ходе анализа 5 внешних IP-адресов на платформе VirusTotal была выявлена вредоносная и подозрительная активность различной степени риска. Наблюдаемые адреса ассоциированы с фишингом, распространением вредоносного ПО (Malware) и сканированием/активностью вредоносных узлов.
+
+## Mitigation Steps)
+
+Сетевая блокировка: Внести адреса 2.57.122.238, 77.239.124.202 и 178.128.57.150 в правила блокировки на межсетевых экранах (FW) и NIDS/NIPS.   
+
+Проверка логов (Threat Hunting): Выполнить поиск по SIEM/proxy-логам за последние 30 дней на предмет входящих и исходящих соединений с указанными IP-адресами.
 
 
 
-### Review Individual Source Activity
+
+
+### Determine How Many Accounts Each Source Targeted
+
+This is where you distinguish a simple repeated password attack from multi-account automated enumeration.
+
 
 #### KQL Query
 
-`[12-individual-attack-timeline.kql](./queries/12-individual-attack-timeline.kql)`
+[03-determine-how-many-accounts-each-source-targeted.kql](./queries/03-determine-how-many-accounts-each-source-targeted.kql)
 
-![Individual SSH attack timeline](./screenshots/12-individual-attack-timeline.png)
+![03-determine-how-many-accounts-each-source-targeted.png](./screenshots/03-determine-how-many-accounts-each-source-targeted.png)
 
-### Verify Successful SSH Authentication
+Purpose
+This answers:
+Is the source attacking one account repeatedly, or cycling through many usernames?
+
+
+
+
+### Build the Source → Username → Attempt Matrix
+
+This is one of the most useful evidence tables for the final report.
+
 
 #### KQL Query
 
-`[13-successful-authentication.kql](./queries/13-successful-authentication.kql)`
+[04-build-the-source -username -attempt-matrix.kql](./queries/04-build-the-source -username -attempt-matrix.kql)
 
-![Successful SSH authentication review](./screenshots/13-successful-authentication.png)
+![10-source → username → attempt-matrix.png](./screenshots/10-source → username → attempt-matrix.png)
 
-### Review SSH Sessions and Login History
+Purpose
+This gives you the exact relationship:
+Source IP → Username → Number of failed password attempts
 
-#### KQL Queries and Host-Level Checks
+account root is the main leader in the number of attempts
 
-`[14-ssh-sessions.pdf](./evidence/screenshots/14-ssh-sessions.pdf)`
 
-`[17-successful-login-history.pdf](./evidence/screenshots/17-successful-login-history.pdf)`
+### Investigate the Most Important Username: root
 
-### Host-Based Investigation
+For Linux attacks, root deserves its own pivot.
 
-#### SSH Configuration
+#### KQL Query
 
-`[21-ssh-configuration.pdf](./evidence/screenshots/21-ssh-configuration.pdf)`
+[05-investigate-username-root.kql](./queries/05-investigate-username-root.kql)
 
-#### Temporary Directories
+[11-investigate-username-root.png](./screenshots/11-investigate-username-root.png)
 
-`[18-temporary-directories.pdf](./evidence/screenshots/18-temporary-directories.pdf)`
+Purpose
+This determines:
+whether root was targeted;
+how often;
+by which source IPs;
+at what times.
 
-#### Cron and Scheduled Tasks
 
-`[19-cron.pdf](./evidence/screenshots/19-cron.pdf)`
 
-#### Systemd Persistence
 
-`[20-systemd-persistence.pdf](./evidence/screenshots/20-systemd-persistence.pdf)`
+
+#### Check for Successful Authentication
+
+#### KQL Query
+
+[06-successful-authentication.kql](./queries/06-successful-authentication.kql)
+
+[13-successful-authentication.png](./screenshots/13-successful-authentication.png)
+
+Purpose
+This looks specifically for successful SSH authentication.
+
+The query returned no results.
+Therefore:
+No successful SSH authentication was observed in the reviewed Sentinel telemetry.
+That is a finding, not a statement that compromise was impossible.
+
+Если подтверждён факт успешной компрометации (Successful Authentication после серии Brute Force), порядок первых секунд выглядит так:
+Первые 3 шага (В течение 1–2 минут):
+Блокировка IP-адреса на сетевом уровне (Azure NSG / Firewall / iptables):
+Зачем: Перекрывает нападающему канал связи с вашей виртуальной машиной, чтобы он не успел передать команды, скачать новые скрипты или установить Reverse Shell.
+Завершение активных сессий (Kill Sessions) и блокировка учетной записи:
+Зачем: Если атакующий уже находится внутри консоли (SSH-сессия активна), сам по себе блок IP или смена пароля не сбросит текущую открытую сессию bash. Нужно принудительно «убить» процесс входа (pkill -u USER -9) и заблокировать учетку (usermod -L USER).
+Сброс учётных данных (Credential Reset):
+Зачем: Сменить пароль и отозвать все действующие токены/сессии, чтобы исключить возможность повторного входа.
+
+### Validate the Same Findings Directly on the Endpoint
+
+Because your /var/log/auth.log generated:
+grep: binary file matches
+
+bash
+sudo grep -a '2026-10-03' /var/log/auth.log | \
+grep -E 'sshd|Failed password|Invalid user|authentication failure'
+
+no result 
+
+Purpose
+This provides endpoint-side confirmation of what Sentinel received.
+You want the evidence chain to be:
+FILE01
+  ↓
+auth.log
+  ↓
+rsyslog/Syslog
+  ↓
+AMA
+  ↓
+Log Analytics
+  ↓
+Sentinel
+
+If the same attack appears at both the endpoint and SIEM levels, your telemetry correlation is stronger.
+
+## login and IP address for all types of unsuccessful attempts, and sort them by count:
+
+bash
+sudo journalctl -u ssh --since '2026-10-03 00:00:00' --until '2026-10-03 23:59:59' --no-pager | grep -E 'Failed password|Invalid user' | sed -n -e 's/.*Failed password for invalid user .* from [0-9.]*.*/\2 \1/p' -e 's/.*Failed password for .* from [0-9.]*.*/\2 \1/p' -e 's/.*Invalid user .* from [0-9.]*.*/\2 \1/p' | sort | uniq -c | sort -nr | head -100
+
+[15-unsuccessful-attempts (1).png](./screenshots/15-unsuccessful-attempts (1).png)
+
+
+Основные векторы атаки (Словарный перебор):
+root и ubuntu — абсолютные лидеры по количеству попыток от обоих главных атакующих узлов (162.14.107.96 и 178.128.57.150).
+deploy, test, admin, user — стандартные сервисные и административные имена.
+postgres, oracle, ubnt — специализированные сервисные учетные записи для баз данных и сетевого оборудования Ubiquiti.
+Сравнение источников:
+IP 162.14.107.96 и 178.128.57.150 действовали практически с зеркальной интенсивностью (по 20 попыток под root, по 16 под ubuntu, по 10 под deploy). Это характерно для работы одного и того же ботнета, распределяющего словарь по разным узлам.
+IP 103.174.114.111 сфокусировался в первую очередь на admin (8) и root (5).
+
+Данные с локального сервера полностью совпадают с тем, что собрал Azure Monitor Agent (AMA) и отобразил KQL-запрос в Sentinel. Это подтверждает, что телеметрия между FILE01 и вашей SIEM-системой ходит без потерь. 
+
+### Validate Successful SSH Authentication Locally
+
+bash
+sudo grep -a '2026-10-03' /var/log/auth.log | \
+grep -E 'Accepted password|Accepted publickey'
+
+sudo journalctl -u ssh --since '2026-10-03 00:00:00' --until '2026-10-03 23:59:59' --no-pager | grep -i 'accepted'
+
+
+Purpose
+This is the endpoint equivalent of the Sentinel success check.
+result:
+No output.
+That gives you two independent findings:
+No successful SSH authentication was observed in Sentinel.
+and:
+No successful SSH authentication was identified in the local auth.log during the reviewed date.
+
+### Check Failed Login History With lastb
+Bash
+sudo lastb -ai | head -1000
+
+sudo lastb -i | awk '{print $3, $1}' | sort | uniq -c | sort -nr | head -1000
+
+[16-ip-and-user-rating.png](./screenshots/16-ip-and-user-rating.png)
+
+Важная деталь из вашего вывода lastb:
+Обратите внимание на нижнюю часть списка:
+Новые IP-адреса и более ранняя дата:
+В логе отобразились события за 30 сентября 2026 года (Wed Sep 30):
+77.239.124.202 — перебор учеток yellow, dev, debian, samir, appuser, openhabian и др.
+2.57.122.238 — перебор учеток ethdocker, solana, sol.
+Подтверждение непрерывности атак:
+Это доказывает, что сервер подвергался автоматическому сканированию не только 3 октября, но и за несколько дней до этого. Ботнеты регулярно опрашивают ваш публичный IP.
+
+Основной инцидент (Primary Incident Under Investigation)
+Дата: 3 октября 2026 года.
+Фокус: Атака от IP-адресов 162.14.107.96 и 178.128.57.150.
+Доказательная база: Данные KQL из Azure Sentinel + посекундный разбор journalctl.
+2. Исторический контекст и угрозы (Threat Intelligence & Historical Baseline)
+Источник данных: Извлечение бинарного лога /var/log/btmp через lastb.
+Находки: Выявление более масштабной непрерывной активности с подсетей, таких как 77.239.124.0/24 (где 77.239.124.151 совершил 375+ попыток подбора root).
+Аналитический вывод: Сервер подгадывается автоматизированными ботнетами на постоянной основе. Атака 3 октября была лишь частью общего фона (Internet Background Noise / Automated Reconnaissance).
+Почему включение lastb делает ваш отчет ценным:
+Показывает системный подход: Вы не просто посмотрели один файл за один день, а проверили исторические данные хоста и бинарные логи (btmp).
+Дает основу для рекомендаций (Remediation): Вы можете предложить не просто заблокировать пару IP за 3 октября, а внести в правила Firewall / NSG всю вредоносную подсеть 77.239.124.0/24 и настроить Fail2ban / SSH Key-Based Authentication.
+
+
+
+
+
+
+### Check Successful Login History
+
+Bash
+sudo last -ai | head -50
+
+[17-successful-login-history (1).png](./screenshots/17-successful-login-history (1).png)
+
+Purpose
+This checks successful login sessions.
+
+lastb (/var/log/btmp): Фиксирует массивный поток неудачных попыток подбора паролей (Brute Force Attempts).
+journalctl / auth.log: Дает посекундную детализацию атаки, используемые словари и подтверждает статус Failed password / preauth.
+last (/var/log/wtmp): Окончательно подтверждает отсутствие успешных входов (Accepted) и дает точные интервалы работы хоста (system boot).
+
+
+
+### Check Temporary Directories
+Bash
+ls -la /tmp /var/tmp /dev/shm
+
+screen 18-temporary-directories
+
+Then:
+sudo find /tmp /var/tmp /dev/shm \
+  -mtime -3 -ls 2>/dev/null
+
+Artifact Inspection Verdict:
+Examination of non-persistent staging directories (/tmp, /var/tmp, /dev/shm) revealed no malicious artifacts, web shells, or dropped payloads. All identified entries strictly correlate with standard Ubuntu systemd service sandboxes (PrivateTmp), X11 IPC sockets, and Azure cloud-init processes.
+
+Correct conclusion
+Do not write:
+No malicious files existed on the host.
+Write:
+No suspicious artifacts were identified in /tmp, /var/tmp, or /dev/shm during the reviewed period.
+
+### Check for Account Creation or Modification
+
+sudo grep -a -E \
+'useradd|usermod|userdel|passwd|groupadd|gpasswd' \
+/var/log/auth.log
+
+
+Account & Group Modification Audit:
+Analysis of /var/log/auth.log for administrative user/group management commands (useradd, usermod, userdel, passwd, groupadd) yielded zero unexpected modifications. No local accounts, group privileges, or password changes were executed around or following the October 3 attack window.
+
+### Check systemd Persistence
+Bash
+systemctl list-unit-files --state=enabled
+
+Then:
+systemctl --failed
+
+Check locally created service definitions:
+sudo find /etc/systemd/system \
+  -type f \
+  -maxdepth 3 \
+  -ls
+
+[20-systemd-persistence (1).png](./screenshots/20-systemd-persistence (1).png)
+
+Purpose
+Attackers can establish persistence through malicious systemd services or timers.
+Look for
+Unexpected services executing:
+/bin/bash
+/bin/sh
+curl
+wget
+python
+perl
+nc
+socat
+
+or binaries located in:
+/tmp
+/var/tmp
+/dev/shm
+/home/…
+
+### Check SSH Configuration
+
+Bash
+sudo sshd -T | \
+egrep 'port|permitrootlogin|passwordauthentication|pubkeyauthentication|maxauthtries|logingracetime|allowusers|allowgroups'
+
+[21-ssh-configuration (1).png](./screenshots/21-ssh-configuration (1).png)
+
+Purpose
+This answers:
+Was SSH exposed?
+Was password authentication enabled?
+Was root login permitted?
+How many authentication retries were allowed?
+Were access restrictions configured?
+Why this matters
+Your incident needs an explanation of why the attacker could reach the service.
+For example:
+Internet
+   ↓
+TCP/22 exposed
+   ↓
+sshd
+   ↓
+Password authentication
+   ↓
+Repeated credential attempts
+
+This becomes part of your root-cause analysis.
+
+Анализ конфигурации sshd:
+passwordauthentication yes + port 22 — Основная уязвимость вектора атаки. Стандартный порт SSH был открыт в интернет через NSG, а парольная аутентификация разрешена. Это сделало хост мишенью для автоматизированных сканеров ботнетов.
+permitrootlogin without-password — Главный защитный барьер по умолчанию. Прямой вход под root по паролю запрещен на уровне SSH-демона (разрешен только по ключам). Все ~600+ попыток атакующих подобрать пароль к учетке root были изначально обречены на сбой еще до стадии проверки пароля.
+maxauthtries 6 & logingracetime 120 — Дефолтные лимиты сессии (6 попыток на одно TCP-соединение, таймаут 2 минуты).
+Точная формулировка для отчета:
+SSH Configuration & Root Cause Analysis:
+Audit of active SSH runtime parameters (sshd -T) identified the attack vector: passwordauthentication yes exposed on default port 22. However, brute-force attempts targeting the primary account (root) were mitigated at the protocol layer by permitrootlogin without-password, which restricts root access strictly to public key authentication.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ### Investigation Summary
 
