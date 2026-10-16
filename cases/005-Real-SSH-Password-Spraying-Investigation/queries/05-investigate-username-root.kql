@@ -1,0 +1,10 @@
+Syslog
+| where TimeGenerated between (
+    datetime(2026-10-03 00:00:00) ..
+    datetime(2026-10-03 23:59:59)
+)
+| where ProcessName == "sshd"
+| where SyslogMessage has "Failed password"
+| where SyslogMessage matches regex @"(?i)\broot\b"
+| project TimeGenerated, SyslogMessage
+| order by TimeGenerated asc
