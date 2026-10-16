@@ -134,7 +134,7 @@ The targeting of numerous usernames is consistent with automated credential gues
 
 #### KQL Query
 
-`[01-authentication-evidence.kql](./queries/01-authentication-evidence.kql)`
+[01-authentication-evidence.kql](./queries/01-authentication-evidence.kql)
 
 ![SSH authentication failures](./screenshots/01-authentication-fail.png)
 
