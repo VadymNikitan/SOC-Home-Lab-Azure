@@ -147,7 +147,6 @@ The reported output included common usernames such as `root`, `ubuntu`, `deploy`
 
 Similar patterns may be consistent with automated scanning or password guessing, but do not establish that the sources shared an operator or belonged to the same botnet. Confirm all counts and source-to-account relationships against the underlying command output before including exact numbers.
 
-![Failed SSH authentication analysis](./screenshots/15-unsuccessful-attempts.png)
 
 ### 3.10 Review Historical Failed Login Records
 
