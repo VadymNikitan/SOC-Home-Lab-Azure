@@ -30,7 +30,7 @@ The investigation used available SIEM telemetry and selected endpoint artifacts.
 
 **KQL query:** [01-authentication-evidence.kql](./queries/01-authentication-evidence.kql)
 
-![SSH authentication failures](./screenshots/01-authentication-fail.png)
+![01-authentication-fail.png](./screenshots/01-authentication-fail.png)
 
 The initial query was used to establish the authentication timeline and review event source, target host, authentication outcome, timestamps, usernames, and source IP addresses.
 
@@ -42,7 +42,7 @@ A single failed authentication event does not establish brute-force activity. Th
 
 **KQL query:** [02-external-source-ips.kql](./queries/02-external-source-ips.kql)
 
-![External SSH source IPs](./screenshots/02-identify-external-source-ip.png)
+![02-identify-external-source-ip.png](./screenshots/02-identify-external-source-ip.png)
 
 The query results were used to identify source IPs for further correlation and reputation assessment.
 
@@ -53,11 +53,11 @@ The query results were used to identify source IPs for further correlation and r
 The source IPs were reviewed using VirusTotal.
 
 Screenshots:
-- [VirusTotal result 1](./screenshots/05-virustotal-01.png)
-- [VirusTotal result 2](./screenshots/06-virustotal-02.png)
-- [VirusTotal result 3](./screenshots/07-virustotal-03.png)
-- [VirusTotal result 4](./screenshots/08-virustotal-04.png)
-- [VirusTotal result 5](./screenshots/09-virustotal-05.png)
+- [VirusTotal result 1](./screenshots/04-virustotal-01.png)
+- [VirusTotal result 2](./screenshots/05-virustotal-02.png)
+- [VirusTotal result 3](./screenshots/06-virustotal-03.png)
+- [VirusTotal result 4](./screenshots/07-virustotal-04.png)
+- [VirusTotal result 5](./screenshots/08-virustotal-05.png)
 
 **Assessment note:** Third-party reputation data provides additional context but does not independently prove that a specific connection was malicious. Record the actual detections and confidence for each IP rather than assigning the same verdict to every address.
 
@@ -67,7 +67,7 @@ Screenshots:
 
 **KQL query:** [03-determine-how-many-accounts-each-source-targeted.kql](./queries/03-determine-how-many-accounts-each-source-targeted.kql)
 
-![Targeted usernames by source IP](./screenshots/03-determine-how-many-accounts-each-source-targeted.png)
+![03-determine-how-many-accounts-each-source-targeted.png](./screenshots/03-determine-how-many-accounts-each-source-targeted.png)
 
 The query was used to examine the distribution of failed authentication attempts across usernames and source IPs. This helps characterize the activity without assuming a specific attack technique before the evidence supports it.
 
@@ -77,7 +77,7 @@ The query was used to examine the distribution of failed authentication attempts
 
 **KQL query:** [04-build-source-username-attempt-matrix.kql](./queries/04-build-the-source%20-username%20-attempt-matrix.kql)
 
-![Source IP, username, and attempt matrix](./screenshots/10-source%20%E2%86%92%20username%20%E2%86%92%20attempt-matrix.png)
+![09-source → username → attempt-matrix.png](./screenshots/09-source → username → attempt-matrix.png)
 
 The resulting matrix supports comparison of authentication activity across sources and accounts. The `root` account was reported as receiving the highest number of failed attempts in the reviewed output. Confirm the counts against the query results before publishing exact figures.
 
@@ -87,7 +87,7 @@ The resulting matrix supports comparison of authentication activity across sourc
 
 **KQL query:** [05-investigate-username-root.kql](./queries/05-investigate-username-root.kql)
 
-![Root account investigation](./screenshots/11-investigate-username-root.png)
+![10-investigate-username-root.png](./screenshots/10-investigate-username-root.png)
 
 This focused analysis was used to assess activity targeting a privileged account and correlate it with the broader authentication timeline.
 
@@ -97,7 +97,7 @@ This focused analysis was used to assess activity targeting a privileged account
 
 **KQL query:** [06-successful-authentication.kql](./queries/06-successful-authentication.kql)
 
-![Successful SSH authentication check](./screenshots/13-successful-authentication.png)
+![11-successful-authentication.png](./screenshots/11-successful-authentication.png)
 
 **Finding:** The query returned no successful SSH authentication events in the reviewed Sentinel telemetry.
 
