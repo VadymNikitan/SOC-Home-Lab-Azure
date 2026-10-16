@@ -174,7 +174,7 @@ The historical output also reportedly included activity associated with `77.239.
 sudo last -ai | head -50
 ```
 
-![Successful login history](./screenshots/17-successful-login-history.png)
+
 
 The `last` utility reads session records from `/var/log/wtmp`. These records provide context about recorded user sessions and system boots, but do not replace SSH authentication logs when assessing successful SSH access.
 
@@ -188,12 +188,12 @@ The `last` utility reads session records from `/var/log/wtmp`. These records pro
 
 ```bash
 ls -la /tmp /var/tmp /dev/shm
-
+```
+```bash
 sudo find /tmp /var/tmp /dev/shm \
   -mtime -3 -ls 2>/dev/null
 ```
 
-![Temporary directory inspection](./screenshots/18-temporary-directories.png)
 
 **Finding:** No suspicious artifacts were identified in `/tmp`, `/var/tmp`, or `/dev/shm` during the reviewed inspection, according to the recorded assessment.
 
@@ -224,12 +224,13 @@ This string-based search does not comprehensively audit all account changes and 
 ```bash
 systemctl list-unit-files --state=enabled
 systemctl --failed
+```
 
+```bash
 sudo find /etc/systemd/system \
   -maxdepth 3 -type f -ls
 ```
 
-![systemd persistence inspection](./screenshots/20-systemd-persistence.png)
 
 The review focused on unexpected services or timers, suspicious execution commands, and references to unusual script or binary locations.
 
@@ -246,7 +247,6 @@ sudo sshd -T | grep -E \
 'port|permitrootlogin|passwordauthentication|pubkeyauthentication|maxauthtries|logingracetime|allowusers|allowgroups'
 ```
 
-![Effective SSH configuration](./screenshots/21-ssh-configuration.png)
 
 The recorded configuration assessment reported the following values. Verify each value against the actual command output before publishing:
 
